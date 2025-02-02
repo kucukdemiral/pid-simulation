@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PID Controller Simulation</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
   <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
@@ -11,7 +10,7 @@
 <body>
     <h2>System and Controller Equations</h2>
     <p>The system is modeled as:</p>
-    <p> $$\frac{Y(s)}{U(s)} = \frac{a·s + b}  {s² + c·s + d}$$</p>
+    <p> $$\frac{Y(s)}{U(s)} = \frac{a·s + b}  {s^2 + cs + d}$$</p>
     <p>The PID controller is given by:</p>
     <p>$$U(s) = Kp·e(t) + K_i \int e(t) dt + K_d \frac{de(t)}{dt} $$</p>
     <p>where \(e(t)\) is the error signal: <strong>e(t) = Setpoint - y(t)</strong></p>
@@ -20,29 +19,29 @@
         <fieldset>
             <legend>System Parameters</legend>
             <label for="a_coeff">Coefficient a:</label>
-            <input type="number" step="0.1" id="a_coeff" value="1"><br>
+            <input type="number" step="0.1" id="a_coeff" value="1">
             <label for="b_coeff">Coefficient b:</label>
-            <input type="number" step="0.1" id="b_coeff" value="1"><br>
+            <input type="number" step="0.1" id="b_coeff" value="1">
             <label for="c_coeff">Coefficient c:</label>
-            <input type="number" step="0.1" id="c_coeff" value="1"><br>
+            <input type="number" step="0.1" id="c_coeff" value="1">
             <label for="d_coeff">Coefficient d:</label>
             <input type="number" step="0.1" id="d_coeff" value="1">
         </fieldset>
         <fieldset>
             <legend>PID Gains</legend>
             <label for="kp">Proportional (Kₚ):</label>
-            <input type="number" step="0.1" id="kp" value="1"><br>
+            <input type="number" step="0.1" id="kp" value="1">
             <label for="ki">Integral (Kᵢ):</label>
-            <input type="number" step="0.1" id="ki" value="0"><br>
+            <input type="number" step="0.1" id="ki" value="0">
             <label for="kd">Derivative (K_d):</label>
             <input type="number" step="0.1" id="kd" value="0">
         </fieldset>
         <fieldset>
             <legend>Simulation Settings</legend>
             <label for="duration">Duration (sec):</label>
-            <input type="number" step="1" id="duration" value="10"><br>
+            <input type="number" step="1" id="duration" value="10">
             <label for="dt">Time Step (sec):</label>
-            <input type="number" step="0.001" id="dt" value="0.01"><br>
+            <input type="number" step="0.001" id="dt" value="0.01">
             <label for="setpoint">Setpoint:</label>
             <input type="number" step="0.1" id="setpoint" value="1">
         </fieldset>
