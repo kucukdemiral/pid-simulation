@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PID Controller Simulation</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
+</head>
+<body>
+    <h2>System and Controller Equations</h2>
+    <p>The system is modeled as:</p>
+    <p> $$\frac{Y(s)}{U(s)} = \frac{a·s + b}  {s² + c·s + d}$$</p>
+    <p>The PID controller is given by:</p>
+    <p>$$U(s) = Kp·e(t) + K_i \int e(t) dt + K_d \frac{de(t)}{dt} $$</p>
+    <p>where \(e(t)\) is the error signal: <strong>e(t) = Setpoint - y(t)</strong></p>
+    <h1>PID Controller Simulation</h1>
+    <form id="pidForm">
+        <fieldset>
+            <legend>System Parameters</legend>
+            <label for="a_coeff">Coefficient a:</label>
+            <input type="number" step="0.1" id="a_coeff" value="1"><br>
+            <label for="b_coeff">Coefficient b:</label>
+            <input type="number" step="0.1" id="b_coeff" value="1"><br>
+            <label for="c_coeff">Coefficient c:</label>
+            <input type="number" step="0.1" id="c_coeff" value="1"><br>
+            <label for="d_coeff">Coefficient d:</label>
+            <input type="number" step="0.1" id="d_coeff" value="1">
+        </fieldset>
+        <fieldset>
+            <legend>PID Gains</legend>
+            <label for="kp">Proportional (Kₚ):</label>
+            <input type="number" step="0.1" id="kp" value="1"><br>
+            <label for="ki">Integral (Kᵢ):</label>
+            <input type="number" step="0.1" id="ki" value="0"><br>
+            <label for="kd">Derivative (K_d):</label>
+            <input type="number" step="0.1" id="kd" value="0">
+        </fieldset>
+        <fieldset>
+            <legend>Simulation Settings</legend>
+            <label for="duration">Duration (sec):</label>
+            <input type="number" step="1" id="duration" value="10"><br>
+            <label for="dt">Time Step (sec):</label>
+            <input type="number" step="0.001" id="dt" value="0.01"><br>
+            <label for="setpoint">Setpoint:</label>
+            <input type="number" step="0.1" id="setpoint" value="1">
+        </fieldset>
+        <button type="button" onclick="simulate()">Run Simulation</button>
+    </form>
+    <canvas id="plot" width="800" height="400"></canvas>
+    
+    <script>
+        let chartInstance = null;
+
+        function simulate() {
+            const a = parseFloat(document.getElementById("a_coeff").value);
+            const b = parseFloat(document.getElementById("b_coeff").value);
+            const c = parseFloat(document.getElementById("c_coeff").value);
+            const d = parseFloat(document.getElementById("d_coeff").value);
+            const Kp = parseFloat(document.getElementById("kp").value);
+            const Ki = parseFloat(document.getElementById("ki").value);
+            const Kd = parseFloat(document.getElementById("kd").value);
+            const duration = parseFloat(document.getElementById("duration").value);
+            const dt = parseFloat(document.getElementById("dt").value);
+            const setpoint = parseFloat(document.getElementById("setpoint").value);
+            
+            const time = [];
+            const output = [];
+            
+            let t = 0;
+            let y = 0;
+            let dydt = 0;
+            let ddyddt = 0;
+            let integral = 0;
+            let previousError = setpoint - y;
+            
+            while (t <= duration) {
+                time.push(t.toFixed(1));
+                output.push(y);
+                
+                const error = setpoint - y;
+                integral += error * dt;
+                const derivative = (error - previousError) / dt;
+                const u = Kp * error + Ki * integral + Kd * derivative;
+                
+                ddyddt = (a * u + b - c * dydt - d * y);
+                dydt += ddyddt * dt;
+                y += dydt * dt;
+                
+                previousError = error;
+                t += dt;
+            }
+            
+            plotData(time, output, setpoint);
+        }
+
+        function plotData(time, output, setpoint) {
+            const ctx = document.getElementById("plot").getContext("2d");
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: time,
+                    datasets: [{
+                        label: 'System Response',
+                        data: output,
+                        borderColor: 'blue',
+                        fill: false
+                    }, {
+                        label: 'Setpoint',
+                        data: Array(time.length).fill(setpoint),
+                        borderColor: 'red',
+                        borderDash: [5, 5],
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time (s)'
+                            },
+                            ticks: {
+                                callback: function(value, index, values) {
+                                    return (index * parseFloat(document.getElementById("dt").value)).toFixed(1);
+                                }
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Output'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
