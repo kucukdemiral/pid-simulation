@@ -84,7 +84,8 @@
                 integral += error * dt;
                 const derivative = (error - previousError) / dt;
                 const u = Kp * error + Ki * integral + Kd * derivative;
-                
+
+                u = Math.max(-saturation, Math.min(u, saturation));
                 ddyddt = (a * u + b - c * dydt - d * y);
                 dydt += ddyddt * dt;
                 y += dydt * dt;
