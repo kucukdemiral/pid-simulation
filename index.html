@@ -82,11 +82,12 @@
             const output = [];
             const controlSignal = [];
 
-            let x = Array(n).fill(0); // State variables
+            let x = Array(n).fill(0); // System state variables
             let u = 0;
-            let u_derivatives = Array(m + 1).fill(0); // Track u, u', u'', ...
+            let u_derivatives = Array(m + 1).fill(0); // u, u', u''...
             let integral = 0;
             let previousError = setpoint;
+            let previousU = 0;
 
             for (let t = 0; t <= duration; t += dt) {
                 time.push(t.toFixed(2));
@@ -99,9 +100,11 @@
                 newU = Math.max(-saturation, Math.min(saturation, newU)); // Apply saturation
                 controlSignal.push(newU);
 
-                // Compute derivatives of u
-                u_derivatives.unshift((newU - u_derivatives[0]) / dt);
-                u_derivatives.pop(); // Keep only m+1 elements
+                // Compute derivatives of u (Shift history and update)
+                for (let j = m; j > 0; j--) {
+                    u_derivatives[j] = (u_derivatives[j - 1] - u_derivatives[j]) / dt;
+                }
+                u_derivatives[0] = newU;
                 u = newU;
 
                 // Compute state derivatives using system dynamics
@@ -110,7 +113,7 @@
                     dx[i] = x[i + 1]; // Shift state variables
                 }
 
-                // Compute system equation
+                // Compute nth derivative using system equation
                 let sumA = den_coeff.slice(1).reduce((sum, coef, i) => sum + coef * x[i], 0);
                 let sumB = num_coeff.reduce((sum, coef, j) => sum + coef * u_derivatives[j], 0);
                 dx[n - 1] = -sumA + sumB;
@@ -128,73 +131,23 @@
             plotData(time, output, setpoint, controlSignal, saturation);
         }
 
-function plotData(time, output, setpoint, controlSignal, saturation) {
+        function plotData(time, output, setpoint, controlSignal, saturation) {
             const ctx1 = document.getElementById("outputPlot").getContext("2d");
             const ctx2 = document.getElementById("controlPlot").getContext("2d");
 
             if (chartInstance1) chartInstance1.destroy();
             if (chartInstance2) chartInstance2.destroy();
 
-            // Upper plot: System Response (Output)
             chartInstance1 = new Chart(ctx1, {
                 type: 'line',
-                data: {
-                    labels: time,
-                    datasets: [{
-                        label: 'System Response',
-                        data: output,
-                        borderColor: 'blue',
-                        fill: false
-                    }, {
-                        label: 'Setpoint',
-                        data: Array(time.length).fill(setpoint),
-                        borderColor: 'red',
-                        borderDash: [5, 5],
-                        fill: false
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    scales: {
-                        x: { title: { display: true, text: 'Time (s)' } },
-                        y: { title: { display: true, text: 'Output' } }
-                    }
-                }
+                data: { labels: time, datasets: [{ label: 'System Response', data: output, borderColor: 'blue', fill: false }, { label: 'Setpoint', data: Array(time.length).fill(setpoint), borderColor: 'red', borderDash: [5, 5], fill: false }] },
+                options: { responsive: true, maintainAspectRatio: true }
             });
 
-            // Lower plot: Control Signal with Saturation Limits
             chartInstance2 = new Chart(ctx2, {
                 type: 'line',
-                data: {
-                    labels: time,
-                    datasets: [{
-                        label: 'Control Signal (u)',
-                        data: controlSignal,
-                        borderColor: 'green',
-                        fill: false
-                    }, {
-                        label: 'Saturation Upper Limit',
-                        data: Array(time.length).fill(saturation),
-                        borderColor: 'black',
-                        borderDash: [5, 5],
-                        fill: false
-                    }, {
-                        label: 'Saturation Lower Limit',
-                        data: Array(time.length).fill(-saturation),
-                        borderColor: 'black',
-                        borderDash: [5, 5],
-                        fill: false
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    scales: {
-                        x: { title: { display: true, text: 'Time (s)' } },
-                        y: { title: { display: true, text: 'Control Signal' } }
-                    }
-                }
+                data: { labels: time, datasets: [{ label: 'Control Signal (u)', data: controlSignal, borderColor: 'green', fill: false }] },
+                options: { responsive: true, maintainAspectRatio: true }
             });
         }
     </script>
