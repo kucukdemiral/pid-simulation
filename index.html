@@ -6,6 +6,12 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
+    <style>
+        .chart-container {
+            width: 50%; /* Adjust the width to make it narrower */
+            margin: auto; /* Center the plots */
+        }
+    </style>
 </head>
 <body>
     <h3>System and Controller Equations</h3>
@@ -50,8 +56,12 @@
         <button type="button" onclick="simulate()">Run Simulation</button>
     </form>
 
-    <canvas id="outputPlot" width="500" height="200"></canvas>
-    <canvas id="controlPlot" width="500" height="200"></canvas>
+    <div class="chart-container">
+        <canvas id="outputPlot"></canvas>
+    </div>
+    <div class="chart-container">
+        <canvas id="controlPlot"></canvas>
+    </div>
 
     <script>
         let chartInstance1 = null;
@@ -136,6 +146,7 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     scales: {
                         x: { title: { display: true, text: 'Time (s)' } },
                         y: { title: { display: true, text: 'Output' } }
@@ -169,6 +180,7 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     scales: {
                         x: { title: { display: true, text: 'Time (s)' } },
                         y: { title: { display: true, text: 'Control Signal' } }
