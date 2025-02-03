@@ -76,23 +76,28 @@
             let integral = 0;
             let previousError = setpoint - y;
             
-            while (t <= duration) {
-                time.push(t.toFixed(1));
-                output.push(y);
-                
-                const error = setpoint - y;
-                integral += error * dt;
-                const derivative = (error - previousError) / dt;
-                const u = Kp * error + Ki * integral + Kd * derivative;
+    while (t <= duration) {
+        time.push(t.toFixed(2));
+        output.push(y);
 
-            
-                ddyddt = (a * u + b - c * dydt - d * y);
-                dydt += ddyddt * dt;
-                y += dydt * dt;
-                
-                previousError = error;
-                t += dt;
-            }
+        const error = setpoint - y;
+        integral += error * dt;
+        const derivative = (error - previousError) / dt;
+
+        // Compute raw control signal
+        let u = Kp * error + Ki * integral + Kd * derivative;
+
+        // Apply saturation limits
+        u = Math.max(-saturation, Math.min(saturation, u));
+
+        // Compute system dynamics
+        ddyddt = (a * u + b - c * dydt - d * y);
+        dydt += ddyddt * dt;
+        y += dydt * dt;
+
+        previousError = error;
+        t += dt;
+    }
             
             plotData(time, output, setpoint);
         }
