@@ -12,7 +12,7 @@
     <p>The system is modeled as:</p>
     <p> $$\frac{Y(s)}{U(s)} = \frac{a·s + b}  {s^2 + cs + d}$$</p>
     <p>The PID controller is given by:</p>
-    <p>$$U(s) = Kp·e(t) + K_i \int e(t) dt + K_d \frac{de(t)}{dt} $$</p>
+    <p>$$U(s) = K_pe(t) + K_i \int_0^t e(r) \mathrm dr + K_d \frac{de(t)}{dt} $$</p>
     <p>where \(e(t)\) is the error signal: <strong>e(t) = Setpoint - y(t)</strong></p>
     <h1>PID Controller Simulation</h1>
     <form id="pidForm">
@@ -29,11 +29,11 @@
         </fieldset>
         <fieldset>
             <legend>PID Gains</legend>
-            <label for="kp">Proportional (Kₚ):</label>
+            <label for="kp">Proportional (\(K_p\)):</label>
             <input type="number" step="0.1" id="kp" value="1">
-            <label for="ki">Integral (Kᵢ):</label>
+            <label for="ki">Integral (\(K_i\)):</label>
             <input type="number" step="0.1" id="ki" value="0">
-            <label for="kd">Derivative (K_d):</label>
+            <label for="kd">Derivative (\(K_d\)):</label>
             <input type="number" step="0.1" id="kd" value="0">
         </fieldset>
         <fieldset>
