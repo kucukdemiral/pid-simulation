@@ -75,6 +75,8 @@
             let ddyddt = 0;
             let integral = 0;
             let previousError = setpoint - y;
+            let previousU = 0;  // Store the previous control signal for u'
+            let u = 0;          // Control signal
             
     while (t <= duration) {
         time.push(t.toFixed(2));
@@ -84,18 +86,22 @@
         integral += error * dt;
         const derivative = (error - previousError) / dt;
 
-        // Compute raw control signal
-        let u = Kp * error + Ki * integral + Kd * derivative;
+       let newU = Kp * error + Ki * integral + Kd * derivative;
 
         // Apply saturation limits
-        u = Math.max(-saturation, Math.min(saturation, u));
+        newU = Math.max(-saturation, Math.min(saturation, newU));
+
+        // Compute derivative of control signal u'
+        let uDerivative = (newU - previousU) / dt;
 
         // Compute system dynamics
-        ddyddt = (a * u + b - c * dydt - d * y);
+        ddyddt = -c * dydt - d * y + a * uDerivative + b * newU;
         dydt += ddyddt * dt;
         y += dydt * dt;
 
+        // Update values for the next iteration
         previousError = error;
+        previousU = newU;
         t += dt;
     }
             
