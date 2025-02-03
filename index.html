@@ -1,206 +1,196 @@
+PID_control for java
+
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>PID with State-Space</title>
+    <meta name="viewport" content="width=device-width, initial-scale=0.9">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
     <style>
-        /* Prevent infinite scrolling by setting fixed container heights */
         .chart-container {
-            width: 80%; /* Adjust width as desired */
-            height: 300px; /* Fix the chart height to prevent overflow */
-            margin: 0 auto; /* Center the container */
-            border: 1px solid #ccc; /* Optional border for clarity */
-            box-sizing: border-box;
+            width: 80%; /* Adjust the width to make it narrower */
+            height: 300px;
+            margin: auto; /* Center the plots */
         }
     </style>
 </head>
 <body>
-<form>
-    <!-- Numerator/Denominator, e.g. num=1,0,2  den=1,3,2 -->
-    Numerator: <input type="text" id="num" value="1,0,2">&nbsp;
-    Denominator: <input type="text" id="den" value="1,3,2"><br/>
-    Kp: <input type="number" step="0.1" id="kp" value="1">&nbsp;
-    Ki: <input type="number" step="0.1" id="ki" value="0">&nbsp;
-    Kd: <input type="number" step="0.1" id="kd" value="0"><br/>
-    Duration (sec): <input type="number" step="1" id="duration" value="10">&nbsp;
-    Time Step: <input type="number" step="0.001" id="dt" value="0.01"><br/>
-    Setpoint: <input type="number" step="0.1" id="setpoint" value="1">&nbsp;
-    Saturation: <input type="number" step="0.1" id="sat" value="1">
-    <button type="button" onclick="simulate()">Run</button>
-</form>
+    <h3>System and Controller Equations</h3>
+    <p>The system is modeled as:</p>
+    <p> $$\frac{Y(s)}{U(s)} = \frac{as + b}  {s^2 + cs + d}$$</p>
+    <p>The PID controller is given by:</p>
+    <p>$$u(t) = K_pe(t) + K_i \int_0^t e(r) \mathrm dr + K_d \frac{de(t)}{dt} $$</p>
+    <p>where \(e(t)\) is the error signal: <strong>e(t) = Setpoint - y(t)</strong></p>
+    <h3>PID Controller Simulation</h3>
+    <form id="pidForm">
+        <fieldset>
+            <legend>System Parameters</legend>
+            <label for="a_coeff">Coefficient a:</label>
+            <input type="number" step="0.1" id="a_coeff" value="1">
+            <label for="b_coeff">Coefficient b:</label>
+            <input type="number" step="0.1" id="b_coeff" value="1">
+            <label for="c_coeff">Coefficient c:</label>
+            <input type="number" step="0.1" id="c_coeff" value="1">
+            <label for="d_coeff">Coefficient d:</label>
+            <input type="number" step="0.1" id="d_coeff" value="1">
+        </fieldset>
+        <fieldset>
+            <legend>PID Gains</legend>
+            <label for="kp">Proportional (\(K_p\)):</label>
+            <input type="number" step="0.1" id="kp" value="1">
+            <label for="ki">Integral (\(K_i\)):</label>
+            <input type="number" step="0.1" id="ki" value="0">
+            <label for="kd">Derivative (\(K_d\)):</label>
+            <input type="number" step="0.1" id="kd" value="0">
+        </fieldset>
+        <fieldset>
+            <legend>Simulation Settings</legend>
+            <label for="duration">Duration (sec):</label>
+            <input type="number" step="1" id="duration" value="10">
+            <label for="dt">Time Step (sec):</label>
+            <input type="number" step="0.001" id="dt" value="0.01">
+            <label for="setpoint">Setpoint:</label>
+            <input type="number" step="0.1" id="setpoint" value="1"><br/>
+            <label for="saturation">Symmetric saturation on (\(u\)):</label>
+            <input type="number" step="0.1" id="saturation" value="1">
+        </fieldset>
+        <button type="button" onclick="simulate()">Run Simulation</button>
+    </form>
 
-<!-- Containers with fixed height so chart won't stretch the page -->
-<div class="chart-container">
-    <canvas id="resp"></canvas>
-</div>
-<div class="chart-container">
-    <canvas id="ctrl"></canvas>
-</div>
+    <div class="chart-container">
+        <canvas id="outputPlot"></canvas>
+    </div>
+    <div class="chart-container">
+        <canvas id="controlPlot"></canvas>
+    </div>
 
-<script>
-function simulate() {
-    // 1) Parse inputs
-    const num = document.getElementById('num').value.split(',').map(Number);
-    const den = document.getElementById('den').value.split(',').map(Number);
-    const Kp = parseFloat(document.getElementById('kp').value);
-    const Ki = parseFloat(document.getElementById('ki').value);
-    const Kd = parseFloat(document.getElementById('kd').value);
-    const duration = parseFloat(document.getElementById('duration').value);
-    const dt = parseFloat(document.getElementById('dt').value);
-    const setpoint = parseFloat(document.getElementById('setpoint').value);
-    const sat = parseFloat(document.getElementById('sat').value);
+    <script>
+        let chartInstance1 = null;
+        let chartInstance2 = null;
 
-    // 2) Convert to controllable canonical form
-    const {A, B, C, D} = tf2ss(num, den);
+        function simulate() {
+            const a = parseFloat(document.getElementById("a_coeff").value);
+            const b = parseFloat(document.getElementById("b_coeff").value);
+            const c = parseFloat(document.getElementById("c_coeff").value);
+            const d = parseFloat(document.getElementById("d_coeff").value);
+            const Kp = parseFloat(document.getElementById("kp").value);
+            const Ki = parseFloat(document.getElementById("ki").value);
+            const Kd = parseFloat(document.getElementById("kd").value);
+            const duration = parseFloat(document.getElementById("duration").value);
+            const dt = parseFloat(document.getElementById("dt").value);
+            const setpoint = parseFloat(document.getElementById("setpoint").value);
+            const saturation = parseFloat(document.getElementById("saturation").value);
 
-    // States for n-th order system
-    const n = A.length;         // System order
-    let x = new Array(n).fill(0);
+            const time = [];
+            const output = [];
+            const controlSignal = [];
 
-    // PID variables
-    let integral = 0;
-    let prevError = setpoint;   // error(t-dt)
-    
-    // Storage for plotting
-    const tVals = [];
-    const yVals = [];
-    const uVals = [];
+            let t = 0;
+            let y = 0;
+            let dydt = 0;
+            let ddyddt = 0;
+            let integral = 0;
+            let previousError = setpoint - y;
+            let previousU = 0;
+            let u = 0;
 
-    for (let t=0; t<=duration; t+=dt) {
-        tVals.push(t);
+            while (t <= duration) {
+                time.push(t.toFixed(2));
+                output.push(y);
 
-        // Output of the system
-        const y = matDot(C, x) + D*0; // If direct feedthrough -> + D*u
-        yVals.push(y);
+                const error = setpoint - y;
+                integral += error * dt;
+                const derivative = (error - previousError) / dt;
 
-        // Compute the PID
-        const error = setpoint - y;
-        integral += error * dt;
-        const deriv = (error - prevError)/dt;
-        let u = Kp*error + Ki*integral + Kd*deriv;
+                let newU = Kp * error + Ki * integral + Kd * derivative;
+                newU = Math.max(-saturation, Math.min(saturation, newU)); // Apply saturation
 
-        // Saturation
-        u = Math.max(-sat, Math.min(sat, u));
-        uVals.push(u);
+                let uDerivative = (newU - previousU) / dt;
+                ddyddt = -c * dydt - d * y + a * uDerivative + b * newU;
+                dydt += ddyddt * dt;
+                y += dydt * dt;
 
-        // State-Space Forward Euler: x(k+1) = x(k) + dt*(A x(k) + B u(k))
-        const Ax = matVecMul(A, x);
-        for(let i=0; i<n; i++){
-            Ax[i] += B[i]*u;
+                controlSignal.push(newU); // Store control signal
+
+                previousError = error;
+                previousU = newU;
+                t += dt;
+            }
+
+            plotData(time, output, setpoint, controlSignal, saturation);
         }
-        for(let i=0; i<n; i++){
-            x[i] += dt*Ax[i];
+
+        function plotData(time, output, setpoint, controlSignal, saturation) {
+            const ctx1 = document.getElementById("outputPlot").getContext("2d");
+            const ctx2 = document.getElementById("controlPlot").getContext("2d");
+
+            if (chartInstance1) chartInstance1.destroy();
+            if (chartInstance2) chartInstance2.destroy();
+
+            // Upper plot: System Response (Output)
+            chartInstance1 = new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: time,
+                    datasets: [{
+                        label: 'System Response',
+                        data: output,
+                        borderColor: 'blue',
+                        fill: false
+                    }, {
+                        label: 'Setpoint',
+                        data: Array(time.length).fill(setpoint),
+                        borderColor: 'red',
+                        borderDash: [5, 5],
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        x: { title: { display: true, text: 'Time (s)' } },
+                        y: { title: { display: true, text: 'Output' } }
+                    }
+                }
+            });
+
+            // Lower plot: Control Signal with Saturation Limits
+            chartInstance2 = new Chart(ctx2, {
+                type: 'line',
+                data: {
+                    labels: time,
+                    datasets: [{
+                        label: 'Control Signal (u)',
+                        data: controlSignal,
+                        borderColor: 'green',
+                        fill: false
+                    }, {
+                        label: 'Saturation Upper Limit',
+                        data: Array(time.length).fill(saturation),
+                        borderColor: 'black',
+                        borderDash: [5, 5],
+                        fill: false
+                    }, {
+                        label: 'Saturation Lower Limit',
+                        data: Array(time.length).fill(-saturation),
+                        borderColor: 'black',
+                        borderDash: [5, 5],
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        x: { title: { display: true, text: 'Time (s)' } },
+                        y: { title: { display: true, text: 'Control Signal' } }
+                    }
+                }
+            });
         }
-
-        prevError = error;
-    }
-
-    plotResults(tVals, yVals, uVals);
-}
-
-// Helper: Convert TF -> State-Space in Controllable Canonical Form
-function tf2ss(num, den) {
-    // Make sure leading den coeff is 1
-    const a0 = den[0];
-    if (a0 !== 1) {
-        for(let i=0; i<den.length; i++) den[i] /= a0;
-        for(let i=0; i<num.length; i++) num[i] /= a0;
-    }
-    // System order
-    const n = den.length - 1; 
-    // Pad numerator if needed
-    const m = num.length - 1; 
-    if(m < n){
-        const extra = n - m;
-        for(let i=0; i<extra; i++){
-            num.unshift(0);
-        }
-    }
-    // Build A
-    const A = [];
-    for(let i=0; i<n; i++){
-        A.push(new Array(n).fill(0));
-    }
-    // Fill subdiagonal
-    for(let i=0; i<n-1; i++){
-        A[i][i+1] = 1;
-    }
-    // A[n-1] = [-a_n, -a_{n-1}, ..., -a_1]
-    for(let i=0; i<n; i++){
-        A[n-1][i] = -den[n - i];
-    }
-
-    // B = [0, 0, ..., 1]^T
-    const B = new Array(n).fill(0);
-    B[n-1] = 1;
-
-    // C, D from numerator
-    const C = new Array(n).fill(0);
-    for(let i=0; i<n; i++){
-        C[i] = num[n - 1 - i];
-    }
-    let D = 0;
-    if(m === n){
-        D = num[n];
-    }
-    return { A, B, C, D };
-}
-
-// Matrix-Vector multiply
-function matVecMul(M, v){
-    const r = new Array(M.length).fill(0);
-    for(let i=0; i<M.length; i++){
-        let sum = 0;
-        for(let j=0; j<M[0].length; j++){
-            sum += M[i][j] * v[j];
-        }
-        r[i] = sum;
-    }
-    return r;
-}
-
-// Dot product C x
-function matDot(C, x){
-    let sum = 0;
-    for(let i=0; i<C.length; i++){
-        sum += C[i]*x[i];
-    }
-    return sum;
-}
-
-function plotResults(time, output, control) {
-    const ctx1 = document.getElementById('resp').getContext('2d');
-    const ctx2 = document.getElementById('ctrl').getContext('2d');
-
-    new Chart(ctx1, {
-        type: 'line',
-        data: {
-            labels: time,
-            datasets: [
-                { label: 'Output y(t)', data: output, borderColor: 'blue', fill: false },
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false
-        }
-    });
-
-    new Chart(ctx2, {
-        type: 'line',
-        data: {
-            labels: time,
-            datasets: [
-                { label: 'Control u(t)', data: control, borderColor: 'green', fill: false },
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false
-        }
-    });
-}
-</script>
+    </script>
 </body>
 </html>
