@@ -86,7 +86,7 @@
             let u = 0;
             let u_derivatives = Array(m + 1).fill(0); // u, u', u''...
             let integral = 0;
-            let previousError = setpoint;
+            let previousError = 0;
             let previousU = 0;
 
             for (let t = 0; t <= duration; t += dt) {
@@ -116,7 +116,7 @@
                 // Compute nth derivative using system equation
                 let sumA = den_coeff.slice(1).reduce((sum, coef, i) => sum + coef * x[i], 0);
                 let sumB = num_coeff.reduce((sum, coef, j) => sum + coef * u_derivatives[j], 0);
-                dx[n - 1] = -sumA + sumB;
+                dx[n - 1] = (-sumA + sumB) / den_coeff[0];
 
                 // Update system states
                 for (let i = 0; i < n; i++) {
