@@ -8,13 +8,13 @@
   <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
 </head>
 <body>
-    <h2>System and Controller Equations</h2>
+    <h3>System and Controller Equations</h3>
     <p>The system is modeled as:</p>
-    <p> $$\frac{Y(s)}{U(s)} = \frac{a·s + b}  {s^2 + cs + d}$$</p>
+    <p> $$\frac{Y(s)}{U(s)} = \frac{as + b}  {s^2 + cs + d}$$</p>
     <p>The PID controller is given by:</p>
-    <p>$$U(s) = K_pe(t) + K_i \int_0^t e(r) \mathrm dr + K_d \frac{de(t)}{dt} $$</p>
+    <p>$$u(t) = K_pe(t) + K_i \int_0^t e(r) \mathrm dr + K_d \frac{de(t)}{dt} $$</p>
     <p>where \(e(t)\) is the error signal: <strong>e(t) = Setpoint - y(t)</strong></p>
-    <h1>PID Controller Simulation</h1>
+    <h3>PID Controller Simulation</h3>
     <form id="pidForm">
         <fieldset>
             <legend>System Parameters</legend>
