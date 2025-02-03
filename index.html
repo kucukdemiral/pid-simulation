@@ -128,8 +128,74 @@
             plotData(time, output, setpoint, controlSignal, saturation);
         }
 
-        function plotData(time, output, setpoint, controlSignal, saturation) {
-            // (Plotting logic remains the same)
+function plotData(time, output, setpoint, controlSignal, saturation) {
+            const ctx1 = document.getElementById("outputPlot").getContext("2d");
+            const ctx2 = document.getElementById("controlPlot").getContext("2d");
+
+            if (chartInstance1) chartInstance1.destroy();
+            if (chartInstance2) chartInstance2.destroy();
+
+            // Upper plot: System Response (Output)
+            chartInstance1 = new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: time,
+                    datasets: [{
+                        label: 'System Response',
+                        data: output,
+                        borderColor: 'blue',
+                        fill: false
+                    }, {
+                        label: 'Setpoint',
+                        data: Array(time.length).fill(setpoint),
+                        borderColor: 'red',
+                        borderDash: [5, 5],
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        x: { title: { display: true, text: 'Time (s)' } },
+                        y: { title: { display: true, text: 'Output' } }
+                    }
+                }
+            });
+
+            // Lower plot: Control Signal with Saturation Limits
+            chartInstance2 = new Chart(ctx2, {
+                type: 'line',
+                data: {
+                    labels: time,
+                    datasets: [{
+                        label: 'Control Signal (u)',
+                        data: controlSignal,
+                        borderColor: 'green',
+                        fill: false
+                    }, {
+                        label: 'Saturation Upper Limit',
+                        data: Array(time.length).fill(saturation),
+                        borderColor: 'black',
+                        borderDash: [5, 5],
+                        fill: false
+                    }, {
+                        label: 'Saturation Lower Limit',
+                        data: Array(time.length).fill(-saturation),
+                        borderColor: 'black',
+                        borderDash: [5, 5],
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        x: { title: { display: true, text: 'Time (s)' } },
+                        y: { title: { display: true, text: 'Control Signal' } }
+                    }
+                }
+            });
         }
     </script>
 </body>
