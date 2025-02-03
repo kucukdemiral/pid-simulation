@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-  <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
 </head>
 <body>
     <h3>System and Controller Equations</h3>
@@ -44,15 +44,18 @@
             <input type="number" step="0.001" id="dt" value="0.01">
             <label for="setpoint">Setpoint:</label>
             <input type="number" step="0.1" id="setpoint" value="1">
-            <label for="saturation">Symmetic saturation on (\(u\)):</label>
+            <label for="saturation">Symmetric saturation on (\(u\)):</label>
             <input type="number" step="0.1" id="saturation" value="1">
         </fieldset>
         <button type="button" onclick="simulate()">Run Simulation</button>
     </form>
-    <canvas id="plot" width="800" height="400"></canvas>
-    
+
+    <canvas id="outputPlot" width="800" height="400"></canvas>
+    <canvas id="controlPlot" width="800" height="400"></canvas>
+
     <script>
-        let chartInstance = null;
+        let chartInstance1 = null;
+        let chartInstance2 = null;
 
         function simulate() {
             const a = parseFloat(document.getElementById("a_coeff").value);
@@ -66,54 +69,55 @@
             const dt = parseFloat(document.getElementById("dt").value);
             const setpoint = parseFloat(document.getElementById("setpoint").value);
             const saturation = parseFloat(document.getElementById("saturation").value);
+
             const time = [];
             const output = [];
-            
+            const controlSignal = [];
+
             let t = 0;
             let y = 0;
             let dydt = 0;
             let ddyddt = 0;
             let integral = 0;
             let previousError = setpoint - y;
-            let previousU = 0;  // Store the previous control signal for u'
-            let u = 0;          // Control signal
-            
-    while (t <= duration) {
-        time.push(t.toFixed(2));
-        output.push(y);
+            let previousU = 0;
+            let u = 0;
 
-        const error = setpoint - y;
-        integral += error * dt;
-        const derivative = (error - previousError) / dt;
+            while (t <= duration) {
+                time.push(t.toFixed(2));
+                output.push(y);
 
-       let newU = Kp * error + Ki * integral + Kd * derivative;
+                const error = setpoint - y;
+                integral += error * dt;
+                const derivative = (error - previousError) / dt;
 
-        // Apply saturation limits
-        newU = Math.max(-saturation, Math.min(saturation, newU));
+                let newU = Kp * error + Ki * integral + Kd * derivative;
+                newU = Math.max(-saturation, Math.min(saturation, newU)); // Apply saturation
 
-        // Compute derivative of control signal u'
-        let uDerivative = (newU - previousU) / dt;
+                let uDerivative = (newU - previousU) / dt;
+                ddyddt = -c * dydt - d * y + a * uDerivative + b * newU;
+                dydt += ddyddt * dt;
+                y += dydt * dt;
 
-        // Compute system dynamics
-        ddyddt = -c * dydt - d * y + a * uDerivative + b * newU;
-        dydt += ddyddt * dt;
-        y += dydt * dt;
+                controlSignal.push(newU); // Store control signal
 
-        // Update values for the next iteration
-        previousError = error;
-        previousU = newU;
-        t += dt;
-    }
-            
-            plotData(time, output, setpoint);
+                previousError = error;
+                previousU = newU;
+                t += dt;
+            }
+
+            plotData(time, output, setpoint, controlSignal, saturation);
         }
 
-        function plotData(time, output, setpoint) {
-            const ctx = document.getElementById("plot").getContext("2d");
-            if (chartInstance) {
-                chartInstance.destroy();
-            }
-            chartInstance = new Chart(ctx, {
+        function plotData(time, output, setpoint, controlSignal, saturation) {
+            const ctx1 = document.getElementById("outputPlot").getContext("2d");
+            const ctx2 = document.getElementById("controlPlot").getContext("2d");
+
+            if (chartInstance1) chartInstance1.destroy();
+            if (chartInstance2) chartInstance2.destroy();
+
+            // Upper plot: System Response (Output)
+            chartInstance1 = new Chart(ctx1, {
                 type: 'line',
                 data: {
                     labels: time,
@@ -133,23 +137,41 @@
                 options: {
                     responsive: true,
                     scales: {
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Time (s)'
-                            },
-                            ticks: {
-                                callback: function(value, index, values) {
-                                    return (index * parseFloat(document.getElementById("dt").value)).toFixed(1);
-                                }
-                            }
-                        },
-                        y: {
-                            title: {
-                                display: true,
-                                text: 'Output'
-                            }
-                        }
+                        x: { title: { display: true, text: 'Time (s)' } },
+                        y: { title: { display: true, text: 'Output' } }
+                    }
+                }
+            });
+
+            // Lower plot: Control Signal with Saturation Limits
+            chartInstance2 = new Chart(ctx2, {
+                type: 'line',
+                data: {
+                    labels: time,
+                    datasets: [{
+                        label: 'Control Signal (u)',
+                        data: controlSignal,
+                        borderColor: 'green',
+                        fill: false
+                    }, {
+                        label: 'Saturation Upper Limit',
+                        data: Array(time.length).fill(saturation),
+                        borderColor: 'black',
+                        borderDash: [5, 5],
+                        fill: false
+                    }, {
+                        label: 'Saturation Lower Limit',
+                        data: Array(time.length).fill(-saturation),
+                        borderColor: 'black',
+                        borderDash: [5, 5],
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { title: { display: true, text: 'Time (s)' } },
+                        y: { title: { display: true, text: 'Control Signal' } }
                     }
                 }
             });
