@@ -270,11 +270,13 @@
             label: 'System Response',
             data: outputArr,
             borderColor: 'blue',
+            borderWidth: 1,
             fill: false,
           }, {
             label: 'Setpoint',
             data: Array(timeArr.length).fill(setpoint),
             borderColor: 'red',
+            borderWidth: 1,
             borderDash: [3, 3],
             fill: false,
           }]
@@ -303,12 +305,14 @@
             label: 'Saturation Upper Limit',
             data: Array(timeArr.length).fill(saturation),
             borderColor: 'black',
+            borderWidth: 1,
             borderDash: [3, 3],
             fill: false,
           }, {
             label: 'Saturation Lower Limit',
             data: Array(timeArr.length).fill(-saturation),
             borderColor: 'black',
+            borderWidth: 1,
             borderDash: [3, 3],
             fill: false,
           }]
