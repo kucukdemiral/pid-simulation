@@ -19,34 +19,34 @@
       margin-right: 0.5em;
     }
   </style>
-  <title>PID Control on an Arbitrary Rational Function</title>
+  <title>Filtered PID Control Simulation</title>
 </head>
 <body>
-  <h2>PID Controller Simulation for an Arbitrary Rational System</h2>
+  <h2>Filtered PID Controller Simulation for an Arbitrary Rational System</h2>
   <p>
     The system is modeled as a rational function:
     \[
       G(s)=\frac{N(s)}{D(s)}
     \]
-    where the coefficients for the numerator and denominator polynomials (in descending powers of \(s\)) are entered below.
+    where you enter the numerator and denominator coefficients (in descending powers of \(s\)).
   </p>
   <p>
-    The PID controller is given by:
+    The filtered PID controller is given by:
     \[
-      u(t) = K_p\,e(t) + K_i \int_0^t e(r)\,dr + K_d\,\frac{de(t)}{dt}\,,
+      u(s)=K_p\,e(s)+\frac{K_i}{s}\,e(s)+K_d\,\frac{N\,s}{s+N}\,e(s),
     \]
-    where \(e(t)=\) Setpoint \(-\, y(t)\).
+    where \(N\) is the derivative filter parameter and \(e(t)=\) Setpoint \(-\, y(t)\).
   </p>
   
   <form id="pidForm">
     <fieldset>
       <legend>System Transfer Function</legend>
       <label for="numerator">Numerator Coefficients:</label>
-      <input type="text" id="numerator" size="30" value="0,1,1" placeholder="e.g. 0,1,1">
-      <small>(Enter coefficients in descending powers of \(s\); pad with 0 if needed.)</small><br/><br/>
+      <input type="text" id="numerator" size="30" value="0,2,3" placeholder="e.g. 0,2,3">
+      <small>(For \(2s+3\) enter \(0,2,3\) to pad the missing \(s^2\) term.)</small><br/><br/>
       <label for="denominator">Denominator Coefficients:</label>
-      <input type="text" id="denominator" size="30" value="1,1,1" placeholder="e.g. 1,1,1">
-      <small>(The first coefficient must be nonzero. The transfer function is normalized so that this coefficient equals 1.)</small>
+      <input type="text" id="denominator" size="30" value="1,4,5" placeholder="e.g. 1,4,5">
+      <small>(For \(s^2+4s+5\) enter \(1,4,5\).)</small>
     </fieldset>
     
     <fieldset>
@@ -57,6 +57,8 @@
       <input type="number" step="0.1" id="ki" value="0">
       <label for="kd">Derivative (\(K_d\)):</label>
       <input type="number" step="0.1" id="kd" value="0">
+      <label for="N_filter">Derivative Filter (N):</label>
+      <input type="number" step="0.1" id="N_filter" value="10">
     </fieldset>
     
     <fieldset>
@@ -85,7 +87,7 @@
     let chartInstance1 = null;
     let chartInstance2 = null;
     
-    // Helper: dot product of two arrays
+    // Helper: dot product of two arrays.
     function dotProduct(v1, v2) {
       let sum = 0;
       for (let i = 0; i < v1.length; i++) {
@@ -121,7 +123,7 @@
         return;
       }
       
-      // Normalize so that the highest–order coefficient of denominator is 1.
+      // Normalize so that the highest–order coefficient of the denominator is 1.
       let lead = denCoeffs[0];
       denCoeffs = denCoeffs.map(c => c / lead);
       numCoeffs = numCoeffs.map(c => c / lead);
@@ -142,9 +144,9 @@
       // In controllable canonical form for a transfer function written as:
       //   G(s) = (b0 s^n + b1 s^(n-1) + ... + b_n) / (s^n + a1 s^(n-1) + ... + a_n)
       // we choose:
-      //   D = b0
-      //   C = [b1 - a1*D, b2 - a2*D, ..., b_n - a_n*D]
-      //   A = [ -a1, -a2, ..., -a_n; 1, 0, ..., 0; 0,1,...,0 ]
+      //   D_value = b0
+      //   C = [b1 - a1*D_value, b2 - a2*D_value, ..., b_n - a_n*D_value]
+      //   A = companion matrix built from -a1, -a2, ..., -a_n.
       //   B = [1, 0, ..., 0]^T
       let D_value = numCoeffs[0];
       let C = [];
@@ -177,6 +179,7 @@
       const Kp = parseFloat(document.getElementById("kp").value);
       const Ki = parseFloat(document.getElementById("ki").value);
       const Kd = parseFloat(document.getElementById("kd").value);
+      const N_filter = parseFloat(document.getElementById("N_filter").value);
       const duration = parseFloat(document.getElementById("duration").value);
       const dt = parseFloat(document.getElementById("dt").value);
       const setpoint = parseFloat(document.getElementById("setpoint").value);
@@ -189,45 +192,53 @@
       
       // Initial conditions:
       let t = 0;
-      // State vector x of length n. (For n = 0, we have a static gain: y = D*u.)
+      // State vector x (for n > 0; for n = 0 we have a static gain system: y = D_value*u).
       let x = (n > 0) ? new Array(n).fill(0) : [];
       let u = 0;
       
-      // Compute initial output: if n>0 then y = C*x + D*u, else y = D*u.
+      // Compute initial output: if n > 0 then y = C*x + D_value*u, else y = D_value*u.
       let y = (n > 0) ? dotProduct(C, x) + D_value * u : D_value * u;
       let error = setpoint - y;
       let integral = 0;
       let previousError = error;
+      // d_term is the state for the filtered derivative term.
+      let d_term = 0;
       
-      // Run the simulation loop
+      // Run the simulation loop.
       while (t <= duration) {
         // Record current time and output.
         timeArr.push(t.toFixed(2));
         outputArr.push(y);
         
-        // Compute controller output based on error.
+        // Compute error.
         error = setpoint - y;
+        
+        // Integral term.
         integral += error * dt;
-        let derivative = (error - previousError) / dt;
-        let u_new = Kp * error + Ki * integral + Kd * derivative;
-        // Apply symmetric saturation
+        
+        // Filtered derivative update:
+        // Using Euler integration on:  d_dot + N_filter*d = Kd*N_filter*e_dot,
+        // where e_dot is approximated by (error - previousError)/dt.
+        d_term = (1 - N_filter * dt) * d_term + Kd * N_filter * (error - previousError);
+        
+        // Compute controller output.
+        let u_new = Kp * error + Ki * integral + d_term;
+        // Apply symmetric saturation.
         u_new = Math.max(-saturation, Math.min(saturation, u_new));
         controlArr.push(u_new);
         
-        // Compute new state (Euler integration)
+        // Update the system state (Euler integration of state–space model).
         if (n > 0) {
-          // Calculate A*x
           let Ax = multiplyMatrixVector(A, x);
-          // Update each state: x = x + dt*(A*x + B*u_new)
           let x_new = [];
           for (let i = 0; i < n; i++) {
             x_new.push(x[i] + dt * (Ax[i] + B[i] * u_new));
           }
           x = x_new;
-          // Compute system output: y = C*x + D*u_new.
+          // Compute output: y = C*x + D_value*u_new.
           y = dotProduct(C, x) + D_value * u_new;
         } else {
-          // For a zero–order system, y = D*u.
+          // For a zero–order system, y = D_value*u.
           y = D_value * u_new;
         }
         
@@ -274,7 +285,7 @@
         }
       });
       
-      // Plot for the Control Signal with saturation limits
+      // Plot for the Control Signal with saturation limits.
       chartInstance2 = new Chart(ctx2, {
         type: 'line',
         data: {
