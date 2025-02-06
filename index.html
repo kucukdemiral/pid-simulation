@@ -29,16 +29,16 @@
     </a>
   <p>
     The system is modeled as a rational function:
-    \[
+    $$
       G(s)=\frac{N(s)}{D(s)}
-    \]
+    $$
     where you enter the numerator and denominator coefficients (in descending powers of \(s\)).
   </p>
   <p>
     The filtered PID controller is given by:
-    \[
+    $$
       u(s)=K_p\,e(s)+\frac{K_i}{s}\,e(s)+K_d\,\frac{N\,s}{s+N}\,e(s),
-    \]
+    $$
     where \(N\) is the derivative filter parameter and \(e(t)=\) Setpoint \(-\, y(t)\).
   </p>
   
@@ -285,7 +285,7 @@
           elements: {
       // This setting determines the thickness of the lines drawn on the chart.
       line: {
-        borderWidth: 1  // Change this value to adjust the simulation plot thickness
+        borderWidth: 0.5  // Change this value to adjust the simulation plot thickness
       }
     },
           responsive: true,
@@ -328,7 +328,7 @@
           elements: {
       // This setting determines the thickness of the lines drawn on the chart.
       line: {
-        borderWidth: 1  // Change this value to adjust the simulation plot thickness
+        borderWidth: 0.5  // Change this value to adjust the simulation plot thickness
       }
     },
           responsive: true,
