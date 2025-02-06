@@ -278,7 +278,8 @@
             data: Array(timeArr.length).fill(setpoint),
             borderColor: 'red',
             borderWidth: 0.5,
-            borderDash: [3, 3],
+            pointRadius: 0,
+            borderDash: [5, 5],
             fill: false,
           }]
         },
@@ -315,14 +316,16 @@
             data: Array(timeArr.length).fill(saturation),
             borderColor: 'black',
             borderWidth: 0.5,
-            borderDash: [3, 3],
+            pointRadius: 0,
+            borderDash: [5, 5],
             fill: false,
           }, {
             label: 'Saturation Lower Limit',
             data: Array(timeArr.length).fill(-saturation),
             borderColor: 'black',
             borderWidth: 0.5,
-            borderDash: [3, 3],
+            pointRadius: 0,
+            borderDash: [5, 5],
             fill: false,
           }]
         },
