@@ -18,6 +18,11 @@
     label {
       margin-right: 0.5em;
     }
+    /* Optional: further reduce the width of input fields */
+    input[type="text"], input[type="number"] {
+      width: auto;
+      min-width: 80px;
+    }
   </style>
   <title>Filtered PID Control Simulation</title>
 </head>
@@ -42,10 +47,10 @@
     <fieldset>
       <legend>System Transfer Function</legend>
       <label for="numerator">Numerator Coefficients:</label>
-      <input type="text" id="numerator" size="30" value="0,2,3" placeholder="e.g. 0,2,3">
+      <input type="text" id="numerator" size="20" value="0,2,3" placeholder="e.g. 0,2,3">
       <small>(For \(2s+3\) enter \(0,2,3\) to pad the missing \(s^2\) term.)</small><br/><br/>
       <label for="denominator">Denominator Coefficients:</label>
-      <input type="text" id="denominator" size="30" value="1,4,5" placeholder="e.g. 1,4,5">
+      <input type="text" id="denominator" size="20" value="1,4,5" placeholder="e.g. 1,4,5">
       <small>(For \(s^2+4s+5\) enter \(1,4,5\).)</small>
     </fieldset>
     
@@ -117,7 +122,7 @@
       let numStr = document.getElementById("numerator").value;
       let denStr = document.getElementById("denominator").value;
       
-      // Parse coefficients (expect comma–separated numbers)
+      // Parse coefficients (expect comma-separated numbers)
       let numCoeffs = numStr.split(",").map(s => parseFloat(s.trim()));
       let denCoeffs = denStr.split(",").map(s => parseFloat(s.trim()));
       
@@ -126,7 +131,7 @@
         return;
       }
       
-      // Normalize so that the highest–order coefficient of the denominator is 1.
+      // Normalize so that the highest-order coefficient of the denominator is 1.
       let lead = denCoeffs[0];
       denCoeffs = denCoeffs.map(c => c / lead);
       numCoeffs = numCoeffs.map(c => c / lead);
@@ -211,8 +216,8 @@
       
       // Run the simulation loop.
       while (t <= duration) {
-        // Record current time and output.
-        timeArr.push(t.toFixed(2));
+        // Record current time (with 1 decimal place) and output.
+        timeArr.push(t.toFixed(1));
         outputArr.push(y);
         
         // Compute error.
@@ -293,7 +298,14 @@
           responsive: true,
           maintainAspectRatio: true,
           scales: {
-            x: { title: { display: true, text: 'Time (s)' } },
+            x: { 
+              title: { display: true, text: 'Time (s)' },
+              ticks: {
+                callback: function(value) {
+                  return parseFloat(value).toFixed(1);
+                }
+              }
+            },
             y: { title: { display: true, text: 'Output' } }
           }
         }
@@ -338,7 +350,14 @@
           responsive: true,
           maintainAspectRatio: true,
           scales: {
-            x: { title: { display: true, text: 'Time (s)' } },
+            x: { 
+              title: { display: true, text: 'Time (s)' },
+              ticks: {
+                callback: function(value) {
+                  return parseFloat(value).toFixed(1);
+                }
+              }
+            },
             y: { title: { display: true, text: 'Control Signal' } }
           }
         }
