@@ -19,7 +19,7 @@
       margin-right: 0.5em;
     }
   </style>
-  <title>Filtered PID Control Simulation  </title>
+  <title>Filtered PID Control Simulation</title>
 </head>
 <body>
   <h2>Filtered PID Controller Simulation for an Arbitrary Rational System</h2>
@@ -29,16 +29,12 @@
     </a>
   <p>
     The system is modeled as a rational function:
-    $$
-      G(s)=\frac{N(s)}{D(s)}
-    $$
+    $$ G(s)=\frac{N(s)}{D(s)} $$
     where you enter the numerator and denominator coefficients (in descending powers of \(s\)).
   </p>
   <p>
     The filtered PID controller is given by:
-    $$
-      u(s)=K_p\,e(s)+\frac{K_i}{s}\,e(s)+K_d\,\frac{N\,s}{s+N}\,e(s),
-    $$
+    $$ u(s)=K_p\,e(s)+\frac{K_i}{s}\,e(s)+K_d\,\frac{N\,s}{s+N}\,e(s), $$
     where \(N\) is the derivative filter parameter and \(e(t)=\) Setpoint \(-\, y(t)\).
   </p>
   
@@ -73,8 +69,11 @@
       <input type="number" step="0.001" id="dt" value="0.01">
       <label for="setpoint">Setpoint:</label>
       <input type="number" step="0.1" id="setpoint" value="1"><br/><br/>
-      <label for="saturation">Symmetric saturation on \(u\):</label>
-      <input type="number" step="0.1" id="saturation" value="1">
+      <!-- Non-symmetric saturation inputs -->
+      <label for="u_max">\(u_{max}\):</label>
+      <input type="number" step="0.1" id="u_max" value="1">
+      <label for="u_min">\(u_{min}\):</label>
+      <input type="number" step="0.1" id="u_min" value="-1">
     </fieldset>
     
     <button type="button" onclick="simulate()">Run Simulation</button>
@@ -187,7 +186,9 @@
       const duration = parseFloat(document.getElementById("duration").value);
       const dt = parseFloat(document.getElementById("dt").value);
       const setpoint = parseFloat(document.getElementById("setpoint").value);
-      const saturation = parseFloat(document.getElementById("saturation").value);
+      // Get non-symmetric saturation limits.
+      const u_max = parseFloat(document.getElementById("u_max").value);
+      const u_min = parseFloat(document.getElementById("u_min").value);
       
       // Arrays to store simulation data
       const timeArr = [];
@@ -221,14 +222,14 @@
         integral += error * dt;
         
         // Filtered derivative update:
-        // Using Euler integration on:  d_dot + N_filter*d = Kd*N_filter*e_dot,
-        // where e_dot is approximated by (error - previousError)/dt.
+        // Euler integration on: d_dot + N_filter*d = Kd*N_filter*e_dot,
+        // where e_dot ≈ (error - previousError)/dt.
         d_term = (1 - N_filter * dt) * d_term + Kd * N_filter * (error - previousError);
         
         // Compute controller output.
         let u_new = Kp * error + Ki * integral + d_term;
-        // Apply symmetric saturation.
-        u_new = Math.max(-saturation, Math.min(saturation, u_new));
+        // Apply non-symmetric saturation.
+        u_new = Math.min(u_max, Math.max(u_min, u_new));
         controlArr.push(u_new);
         
         // Update the system state (Euler integration of state–space model).
@@ -251,10 +252,10 @@
         t += dt;
       }
       
-      plotData(timeArr, outputArr, setpoint, controlArr, saturation);
+      plotData(timeArr, outputArr, setpoint, controlArr, u_max, u_min);
     }
     
-    function plotData(timeArr, outputArr, setpoint, controlArr, saturation) {
+    function plotData(timeArr, outputArr, setpoint, controlArr, u_max, u_min) {
       const ctx1 = document.getElementById("outputPlot").getContext("2d");
       const ctx2 = document.getElementById("controlPlot").getContext("2d");
       
@@ -285,11 +286,10 @@
         },
         options: {
           elements: {
-      // This setting determines the thickness of the lines drawn on the chart.
-      line: {
-        borderWidth: 0.5  // Change this value to adjust the simulation plot thickness
-      }
-    },
+            line: {
+              borderWidth: 0.5
+            }
+          },
           responsive: true,
           maintainAspectRatio: true,
           scales: {
@@ -313,7 +313,7 @@
             fill: false,
           }, {
             label: 'Saturation Upper Limit',
-            data: Array(timeArr.length).fill(saturation),
+            data: Array(timeArr.length).fill(u_max),
             borderColor: 'black',
             borderWidth: 1,
             pointRadius: 0,
@@ -321,7 +321,7 @@
             fill: false,
           }, {
             label: 'Saturation Lower Limit',
-            data: Array(timeArr.length).fill(-saturation),
+            data: Array(timeArr.length).fill(u_min),
             borderColor: 'black',
             borderWidth: 1,
             pointRadius: 0,
@@ -331,11 +331,10 @@
         },
         options: {
           elements: {
-      // This setting determines the thickness of the lines drawn on the chart.
-      line: {
-        borderWidth: 0.5  // Change this value to adjust the simulation plot thickness
-      }
-    },
+            line: {
+              borderWidth: 0.5
+            }
+          },
           responsive: true,
           maintainAspectRatio: true,
           scales: {
