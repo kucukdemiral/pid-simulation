@@ -19,18 +19,18 @@
       margin-right: 0.5em;
     }
   </style>
-  <title>Filtered PID Control Simulation with Trapezoidal Integration</title>
+  <title>Filtered PID Control Simulation with Delay</title>
 </head>
 <body>
-  <h2>Filtered PID Controller Simulation for an Arbitrary Rational System</h2>
+  <h2>Filtered PID Controller Simulation for an Arbitrary Rational System with Delay</h2>
   <strong>Program Owner:</strong>
     <a href="https://researchonline.gcu.ac.uk/en/persons/ibrahim-k%C3%BC%C3%A7%C3%BCkdemiral" target="_blank" style="text-decoration: none; color: #007BFF;">
       Ibrahim Küçükdemiral
     </a>
   <p>
-    The system is modeled as a rational function:
-    $$ G(s)=\frac{N(s)}{D(s)} $$
-    where you enter the numerator and denominator coefficients (in descending powers of \(s\)).
+    The system is modeled as a rational function with delay:
+    $$ G(s)=\frac{N(s)}{D(s)}e^{-\tau s} $$
+    where you enter the numerator and denominator coefficients (in descending powers of \(s\)) and the delay \(\tau\).
   </p>
   <p>
     The filtered PID controller is given by:
@@ -47,6 +47,9 @@
       <label for="denominator">Denominator Coefficients:</label>
       <input type="text" id="denominator" size="30" value="1,0,5" placeholder="e.g. 1,0,5">
       <small>(For \(s^2+5\) enter \(1,0,5\).)</small>
+      <br/><br/>
+      <label for="delay">Delay (τ in sec):</label>
+      <input type="number" step="0.001" id="delay" value="0">
     </fieldset>
     
     <fieldset>
@@ -181,6 +184,15 @@
       const setpoint = parseFloat(document.getElementById("setpoint").value);
       const u_max = parseFloat(document.getElementById("u_max").value);
       const u_min = parseFloat(document.getElementById("u_min").value);
+      const tau = parseFloat(document.getElementById("delay").value);
+      
+      // Compute the number of delay steps (tau seconds corresponds to tau/dt steps)
+      let delaySteps = Math.floor(tau / dt);
+      // Initialize the delay buffer with zeros (initial control input is assumed 0)
+      let delayBuffer = [];
+      for (let i = 0; i < delaySteps; i++) {
+        delayBuffer.push(0);
+      }
       
       // Arrays to store simulation data
       const timeArr = [];
@@ -207,30 +219,32 @@
         error = setpoint - y;
         
         // Trapezoidal integration for the error integral:
-        // Uses the average of the current and previous errors.
         integral += (error + previousError) * dt / 2;
         
         // Tustin’s method for the derivative filter.
-        // The continuous filter: d_dot + N_filter*d = Kd*N_filter*e_dot
-        // Discretized using trapezoidal integration.
         let alpha = (2 - N_filter * dt) / (2 + N_filter * dt);
         d_term = alpha * d_term + (2 * Kd * N_filter / (2 + N_filter * dt)) * (error - previousError);
         
         // Compute controller output.
         let u_new = Kp * error + Ki * integral + d_term;
-        // Apply non-symmetric saturation.
         u_new = Math.min(u_max, Math.max(u_min, u_new));
-        controlArr.push(u_new);
         
-        // Trapezoidal integration for the state update:
+        // --- Handle the delay ---
+        // Push the current controller output into the delay buffer
+        delayBuffer.push(u_new);
+        // Retrieve the delayed control input (u_delayed)
+        let u_delayed = delayBuffer.shift();
+        // Record the effective control input for plotting.
+        controlArr.push(u_delayed);
+        
+        // Trapezoidal integration for the state update using the delayed control:
         if (n > 0) {
-          // Compute derivative at current state.
           let Ax = multiplyMatrixVector(A, x);
           
           // Predictor step: Euler prediction for the next state.
           let x_predict = [];
           for (let i = 0; i < n; i++) {
-            x_predict[i] = x[i] + dt * (Ax[i] + B[i] * u_new);
+            x_predict[i] = x[i] + dt * (Ax[i] + B[i] * u_delayed);
           }
           
           // Compute derivative at the predicted state.
@@ -239,18 +253,16 @@
           // Corrector: average the derivatives.
           let x_new = [];
           for (let i = 0; i < n; i++) {
-            x_new[i] = x[i] + (dt / 2) * ((Ax[i] + B[i] * u_new) + (Ax_predict[i] + B[i] * u_new));
+            x_new[i] = x[i] + (dt / 2) * ((Ax[i] + B[i] * u_delayed) + (Ax_predict[i] + B[i] * u_delayed));
           }
           x = x_new;
-          // Update output: y = C*x + D_value*u_new.
-          y = dotProduct(C, x) + D_value * u_new;
+          y = dotProduct(C, x) + D_value * u_delayed;
         } else {
-          // For a static system (n=0), update output directly.
-          y = D_value * u_new;
+          y = D_value * u_delayed;
         }
         
         previousError = error;
-        u = u_new;
+        u = u_new;  // current controller output (not the delayed one)
         t += dt;
       }
       
@@ -296,13 +308,13 @@
         }
       });
       
-      // Plot for the Control Signal with saturation limits.
+      // Plot for the Control Signal (delayed input) with saturation limits.
       chartInstance2 = new Chart(ctx2, {
         type: 'line',
         data: {
           labels: timeArr,
           datasets: [{
-            label: 'Control Signal (u)',
+            label: 'Control Signal (Delayed u)',
             data: controlArr,
             borderColor: 'green',
             borderWidth: 1.5,
