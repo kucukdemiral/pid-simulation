@@ -18,6 +18,15 @@
     label {
       margin-right: 0.5em;
     }
+    /* Decrease width of the variable input boxes (approximately 1/3 of current value) */
+    input[type="text"] {
+      /* Originally size="30"; now set to about 10em width */
+      width: 10em;
+    }
+    input[type="number"] {
+      /* Adjust number inputs to be about 1/3 of the original width */
+      width: 6em;
+    }
   </style>
   <title>Filtered PID Control Simulation with Delay</title>
 </head>
@@ -42,10 +51,10 @@
     <fieldset>
       <legend>System Transfer Function</legend>
       <label for="numerator">Numerator Coefficients:</label>
-      <input type="text" id="numerator" size="30" value="2,3" placeholder="e.g. 2,3">
+      <input type="text" id="numerator" size="10" value="2,3" placeholder="e.g. 2,3">
       <small>(For instance, for \(2s+3\) enter \(2,3\))</small><br/><br/>
       <label for="denominator">Denominator Coefficients:</label>
-      <input type="text" id="denominator" size="30" value="1,0,5" placeholder="e.g. 1,0,5">
+      <input type="text" id="denominator" size="10" value="1,0,5" placeholder="e.g. 1,0,5">
       <small>(For \(s^2+5\) enter \(1,0,5\).)</small>
       <br/><br/>
       <label for="delay">Delay (τ in sec):</label>
