@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=0.9">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
   <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
@@ -19,7 +19,7 @@
       margin-right: 0.5em;
     }
   </style>
-  <title>Filtered PID Control Simulation</title>
+  <title>Filtered PID Control Simulation with Trapezoidal Integration</title>
 </head>
 <body>
   <h2>Filtered PID Controller Simulation for an Arbitrary Rational System</h2>
@@ -117,7 +117,7 @@
       let numStr = document.getElementById("numerator").value;
       let denStr = document.getElementById("denominator").value;
       
-      // Parse coefficients (expect comma–separated numbers)
+      // Parse coefficients (expect comma-separated numbers)
       let numCoeffs = numStr.split(",").map(s => parseFloat(s.trim()));
       let denCoeffs = denStr.split(",").map(s => parseFloat(s.trim()));
       
@@ -143,14 +143,9 @@
       while (numCoeffs.length < denCoeffs.length) {
         numCoeffs.unshift(0);
       }
-      // Now both arrays have length n+1.
-      // In controllable canonical form for a transfer function written as:
-      //   G(s) = (b0 s^n + b1 s^(n-1) + ... + b_n) / (s^n + a1 s^(n-1) + ... + a_n)
-      // we choose:
-      //   D_value = b0
-      //   C = [b1 - a1*D_value, b2 - a2*D_value, ..., b_n - a_n*D_value]
-      //   A = companion matrix built from -a1, -a2, ..., -a_n.
-      //   B = [1, 0, ..., 0]^T
+      
+      // --- Construct state-space model (Controllable Canonical Form) ---
+      // Direct feed-through term.
       let D_value = numCoeffs[0];
       let C = [];
       for (let i = 0; i < n; i++) {
@@ -163,10 +158,8 @@
         A[i] = [];
         for (let j = 0; j < n; j++) {
           if (i === 0) {
-            // First row: negative of the denominator coefficients (skipping the leading one)
             A[i][j] = -denCoeffs[j + 1];
           } else {
-            // Subdiagonal ones.
             A[i][j] = (j === i - 1) ? 1 : 0;
           }
         }
@@ -186,7 +179,6 @@
       const duration = parseFloat(document.getElementById("duration").value);
       const dt = parseFloat(document.getElementById("dt").value);
       const setpoint = parseFloat(document.getElementById("setpoint").value);
-      // Get non-symmetric saturation limits.
       const u_max = parseFloat(document.getElementById("u_max").value);
       const u_min = parseFloat(document.getElementById("u_min").value);
       
@@ -197,34 +189,32 @@
       
       // Initial conditions:
       let t = 0;
-      // State vector x (for n > 0; for n = 0 we have a static gain system: y = D_value*u).
       let x = (n > 0) ? new Array(n).fill(0) : [];
       let u = 0;
-      
-      // Compute initial output: if n > 0 then y = C*x + D_value*u, else y = D_value*u.
       let y = (n > 0) ? dotProduct(C, x) + D_value * u : D_value * u;
       let error = setpoint - y;
       let integral = 0;
       let previousError = error;
-      // d_term is the state for the filtered derivative term.
       let d_term = 0;
       
-      // Run the simulation loop.
+      // --- Simulation Loop (using Trapezoidal Integration) ---
       while (t <= duration) {
         // Record current time and output.
         timeArr.push(t.toFixed(2));
         outputArr.push(y);
         
-        // Compute error.
+        // Compute current error.
         error = setpoint - y;
         
-        // Integral term.
-        integral += error * dt;
+        // Trapezoidal integration for the error integral:
+        // Uses the average of the current and previous errors.
+        integral += (error + previousError) * dt / 2;
         
-        // Filtered derivative update:
-        // Euler integration on: d_dot + N_filter*d = Kd*N_filter*e_dot,
-        // where e_dot ≈ (error - previousError)/dt.
-        d_term = (1 - N_filter * dt) * d_term + Kd * N_filter * (error - previousError);
+        // Tustin’s method for the derivative filter.
+        // The continuous filter: d_dot + N_filter*d = Kd*N_filter*e_dot
+        // Discretized using trapezoidal integration.
+        let alpha = (2 - N_filter * dt) / (2 + N_filter * dt);
+        d_term = alpha * d_term + (2 * Kd * N_filter / (2 + N_filter * dt)) * (error - previousError);
         
         // Compute controller output.
         let u_new = Kp * error + Ki * integral + d_term;
@@ -232,18 +222,30 @@
         u_new = Math.min(u_max, Math.max(u_min, u_new));
         controlArr.push(u_new);
         
-        // Update the system state (Euler integration of state–space model).
+        // Trapezoidal integration for the state update:
         if (n > 0) {
+          // Compute derivative at current state.
           let Ax = multiplyMatrixVector(A, x);
+          
+          // Predictor step: Euler prediction for the next state.
+          let x_predict = [];
+          for (let i = 0; i < n; i++) {
+            x_predict[i] = x[i] + dt * (Ax[i] + B[i] * u_new);
+          }
+          
+          // Compute derivative at the predicted state.
+          let Ax_predict = multiplyMatrixVector(A, x_predict);
+          
+          // Corrector: average the derivatives.
           let x_new = [];
           for (let i = 0; i < n; i++) {
-            x_new.push(x[i] + dt * (Ax[i] + B[i] * u_new));
+            x_new[i] = x[i] + (dt / 2) * ((Ax[i] + B[i] * u_new) + (Ax_predict[i] + B[i] * u_new));
           }
           x = x_new;
-          // Compute output: y = C*x + D_value*u_new.
+          // Update output: y = C*x + D_value*u_new.
           y = dotProduct(C, x) + D_value * u_new;
         } else {
-          // For a zero–order system, y = D_value*u.
+          // For a static system (n=0), update output directly.
           y = D_value * u_new;
         }
         
@@ -285,11 +287,6 @@
           }]
         },
         options: {
-          elements: {
-            line: {
-              borderWidth: 0.5
-            }
-          },
           responsive: true,
           maintainAspectRatio: true,
           scales: {
@@ -330,11 +327,6 @@
           }]
         },
         options: {
-          elements: {
-            line: {
-              borderWidth: 0.5
-            }
-          },
           responsive: true,
           maintainAspectRatio: true,
           scales: {
