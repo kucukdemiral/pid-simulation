@@ -3,10 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Chart.js, polyfill, and MathJax -->
+  <!-- Chart.js, polyfill, MathJax, and jsPDF -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
   <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     .chart-container {
       width: 100%;
@@ -28,11 +29,18 @@
     input[type="number"] {
       width: 5em;
     }
-    /* Optional: Style the saturation toggle (checkbox) container */
+    /* Optional: Style the saturation toggle container */
     .toggle-container {
       display: inline-block;
       vertical-align: middle;
       margin-left: 5px;
+    }
+    /* Style for the Export PDF button */
+    .export-btn {
+      display: block;
+      margin: 20px auto;
+      padding: 10px 20px;
+      font-size: 1em;
     }
   </style>
   <title>Filtered PID Control Simulation with Delay</title>
@@ -80,7 +88,7 @@
       <label for="kd">Derivative (\(K_d\)):</label>
       <input type="number" step="0.1" id="kd" value="0">
       <label for="N_filter">Derivative Filter (\(F\)):</label>
-      <input type="number" step="1" id="N_filter" value="10">
+      <input type="number" step="0.1" id="N_filter" value="10">
     </fieldset>
     
     <fieldset>
@@ -112,6 +120,9 @@
   <div class="chart-container">
     <canvas id="controlPlot"></canvas>
   </div>
+  
+  <!-- New button to export the plots as a high-resolution PDF -->
+  <button type="button" class="export-btn" onclick="exportPDF()">Export PDF</button>
   
   <script>
     let chartInstance1 = null;
@@ -330,8 +341,8 @@
           responsive: true,
           maintainAspectRatio: true,
           scales: {
-            x: { title: { display: true, text: 'Time \(t\)(s)' } },
-            y: { title: { display: true, text: 'Output \(y(t)\)' } }
+            x: { title: { display: true, text: 'Time (s)' } },
+            y: { title: { display: true, text: 'Output' } }
           }
         }
       });
@@ -378,11 +389,42 @@
           responsive: true,
           maintainAspectRatio: true,
           scales: {
-            x: { title: { display: true, text: 'Time \(t\) (s)' } },
-            y: { title: { display: true, text: 'Control Signal \(u(t)\)' } }
+            x: { title: { display: true, text: 'Time (s)' } },
+            y: { title: { display: true, text: 'Control Signal' } }
           }
         }
       });
+    }
+    
+    // New function: Export the plots to a high-resolution PDF.
+    function exportPDF() {
+      // Use jsPDF from the jspdf.umd namespace.
+      const { jsPDF } = window.jspdf;
+      var doc = new jsPDF('p', 'mm', 'a4');
+      var pageWidth = doc.internal.pageSize.getWidth();
+      var pageHeight = doc.internal.pageSize.getHeight();
+      
+      // Export the outputPlot canvas.
+      var canvas1 = document.getElementById("outputPlot");
+      var imgData1 = canvas1.toDataURL("image/png", 1.0);
+      // Set the image width (with margins) and compute proportional height.
+      var imgWidth = 180; // mm
+      var imgHeight = canvas1.height * imgWidth / canvas1.width;
+      doc.setFontSize(16);
+      doc.text("System Response", pageWidth / 2, 10, { align: 'center' });
+      doc.addImage(imgData1, 'PNG', 15, 15, imgWidth, imgHeight);
+      
+      // Add a new page for the control signal plot.
+      doc.addPage();
+      var canvas2 = document.getElementById("controlPlot");
+      var imgData2 = canvas2.toDataURL("image/png", 1.0);
+      imgHeight = canvas2.height * imgWidth / canvas2.width;
+      doc.setFontSize(16);
+      doc.text("Control Signal", pageWidth / 2, 10, { align: 'center' });
+      doc.addImage(imgData2, 'PNG', 15, 15, imgWidth, imgHeight);
+      
+      // Open the PDF in a new browser window.
+      doc.output('dataurlnewwindow');
     }
   </script>
 </body>
