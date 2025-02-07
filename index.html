@@ -35,7 +35,7 @@
   <p>
     The filtered PID controller is given by:
     $$ u(s)=K_p\,e(s)+\frac{K_i}{s}\,e(s)+K_d\,\frac{N\,s}{s+N}\,e(s), $$
-    where \(N\) is the derivative filter parameter and \(e(t)=\) Reference \(-\, y(t)\).
+    where \(N\) is the derivative filter parameter and \(e(t)=\) Setpoint \(-\, y(t)\).
   </p>
   
   <form id="pidForm">
@@ -43,10 +43,10 @@
       <legend>System Transfer Function</legend>
       <label for="numerator">Numerator Coefficients:</label>
       <input type="text" id="numerator" size="30" value="2,3" placeholder="e.g. 2,3">
-      <small>(For example, for \(2s+3\) enter \(2,3\))</small><br/><br/>
+      <small>(For instance, for \(2s+3\) enter \(2,3\))</small><br/><br/>
       <label for="denominator">Denominator Coefficients:</label>
       <input type="text" id="denominator" size="30" value="1,0,5" placeholder="e.g. 1,0,5">
-      <small>(For \(s^2+5\) enter \(1,0,5\))</small>
+      <small>(For \(s^2+5\) enter \(1,0,5\).)</small>
     </fieldset>
     
     <fieldset>
@@ -66,38 +66,14 @@
       <label for="duration">Duration (sec):</label>
       <input type="number" step="1" id="duration" value="10">
       <label for="dt">Time Step (sec):</label>
-      <input type="number" step="0.001" id="dt" value="0.01"><br/><br/>
+      <input type="number" step="0.001" id="dt" value="0.01">
+      <label for="setpoint">Setpoint:</label>
+      <input type="number" step="0.1" id="setpoint" value="1"><br/><br/>
       <!-- Non-symmetric saturation inputs -->
       <label for="u_max">\(u_{max}\):</label>
       <input type="number" step="0.1" id="u_max" value="1">
       <label for="u_min">\(u_{min}\):</label>
       <input type="number" step="0.1" id="u_min" value="-1">
-    </fieldset>
-
-    <fieldset>
-      <legend>Reference Signal</legend>
-      <label for="refType">Reference Type:</label>
-      <select id="refType">
-        <option value="constant" selected>Constant</option>
-        <option value="piecewise">Piecewise Linear</option>
-        <option value="custom">Custom Function</option>
-      </select><br/><br/>
-      
-      <div id="refConstant" class="refOption">
-        <label for="setpoint">Setpoint:</label>
-        <input type="number" step="0.1" id="setpoint" value="1">
-      </div>
-      
-      <div id="refPiecewise" class="refOption" style="display:none;">
-        <label for="refPiecewiseInput">Piecewise Reference (time:value pairs, e.g. "0:1, 5:2, 10:0"):</label>
-        <input type="text" id="refPiecewiseInput" size="50" placeholder='0:1, 5:2, 10:0'>
-      </div>
-      
-      <div id="refCustom" class="refOption" style="display:none;">
-        <label for="refCustomInput">Custom Reference Function f(t):</label>
-        <input type="text" id="refCustomInput" size="50" placeholder='e.g., t < 5 ? 1 : 2'>
-        <small>Enter a JavaScript expression using "t".</small>
-      </div>
     </fieldset>
     
     <button type="button" onclick="simulate()">Run Simulation</button>
@@ -114,14 +90,6 @@
     let chartInstance1 = null;
     let chartInstance2 = null;
     
-    // Update the displayed reference input based on the chosen type.
-    document.getElementById("refType").addEventListener("change", function() {
-      const refType = this.value;
-      document.getElementById("refConstant").style.display = (refType === "constant") ? "block" : "none";
-      document.getElementById("refPiecewise").style.display = (refType === "piecewise") ? "block" : "none";
-      document.getElementById("refCustom").style.display = (refType === "custom") ? "block" : "none";
-    });
-    
     // Helper: dot product of two arrays.
     function dotProduct(v1, v2) {
       let sum = 0;
@@ -131,7 +99,7 @@
       return sum;
     }
     
-    // Multiply a matrix (2D array) A by a vector x.
+    // Multiply matrix A (2D array) by vector x.
     function multiplyMatrixVector(A, x) {
       let result = [];
       for (let i = 0; i < A.length; i++) {
@@ -144,66 +112,12 @@
       return result;
     }
     
-    // Compute the reference (setpoint) at time t.
-    function getReference(t) {
-      const refType = document.getElementById("refType").value;
-      if (refType === "constant") {
-        return parseFloat(document.getElementById("setpoint").value);
-      } else if (refType === "piecewise") {
-        const input = document.getElementById("refPiecewiseInput").value;
-        // Parse input such as "0:1, 5:2, 10:0"
-        const pairs = input.split(",").map(s => s.trim()).filter(s => s !== "");
-        let points = [];
-        pairs.forEach(pair => {
-          let parts = pair.split(":").map(s => s.trim());
-          if (parts.length === 2) {
-            let tVal = parseFloat(parts[0]);
-            let yVal = parseFloat(parts[1]);
-            if (!isNaN(tVal) && !isNaN(yVal)) {
-              points.push({ t: tVal, y: yVal });
-            }
-          }
-        });
-        if (points.length === 0) {
-          return 0; // default if parsing fails.
-        }
-        // Sort points by time.
-        points.sort((a, b) => a.t - b.t);
-        // Before the first time point:
-        if (t <= points[0].t) {
-          return points[0].y;
-        }
-        // After the last time point:
-        if (t >= points[points.length - 1].t) {
-          return points[points.length - 1].y;
-        }
-        // Linear interpolation between the surrounding points.
-        for (let i = 0; i < points.length - 1; i++) {
-          if (t >= points[i].t && t < points[i+1].t) {
-            let slope = (points[i+1].y - points[i].y) / (points[i+1].t - points[i].t);
-            return points[i].y + slope * (t - points[i].t);
-          }
-        }
-      } else if (refType === "custom") {
-        const expr = document.getElementById("refCustomInput").value;
-        try {
-          // Create a new function f(t) that returns the evaluated expression.
-          let f = new Function("t", "return " + expr);
-          return f(t);
-        } catch (e) {
-          console.error("Error evaluating custom reference function:", e);
-          return 0;
-        }
-      }
-      return 0;
-    }
-    
     function simulate() {
       // --- Get system (transfer function) coefficients ---
       let numStr = document.getElementById("numerator").value;
       let denStr = document.getElementById("denominator").value;
       
-      // Parse comma–separated coefficients.
+      // Parse coefficients (expect comma–separated numbers)
       let numCoeffs = numStr.split(",").map(s => parseFloat(s.trim()));
       let denCoeffs = denStr.split(",").map(s => parseFloat(s.trim()));
       
@@ -212,7 +126,7 @@
         return;
       }
       
-      // Normalize so that the leading denominator coefficient is 1.
+      // Normalize so that the highest–order coefficient of the denominator is 1.
       let lead = denCoeffs[0];
       denCoeffs = denCoeffs.map(c => c / lead);
       numCoeffs = numCoeffs.map(c => c / lead);
@@ -225,32 +139,34 @@
         return;
       }
       
-      // If the numerator degree is lower than the denominator degree, pad with zeros.
+      // If numerator degree is lower than denominator degree, pad with zeros at the front.
       while (numCoeffs.length < denCoeffs.length) {
         numCoeffs.unshift(0);
       }
       // Now both arrays have length n+1.
       // In controllable canonical form for a transfer function written as:
-      //   G(s) = (b₀ sⁿ + b₁ sⁿ⁻¹ + ... + bₙ) / (sⁿ + a₁ sⁿ⁻¹ + ... + aₙ)
-      // choose:
-      //   D_value = b₀,
-      //   C = [b₁ - a₁*D_value, b₂ - a₂*D_value, ..., bₙ - aₙ*D_value],
-      //   A = companion matrix built from -a₁, -a₂, ..., -aₙ,
-      //   B = [1, 0, ..., 0]ᵀ.
+      //   G(s) = (b0 s^n + b1 s^(n-1) + ... + b_n) / (s^n + a1 s^(n-1) + ... + a_n)
+      // we choose:
+      //   D_value = b0
+      //   C = [b1 - a1*D_value, b2 - a2*D_value, ..., b_n - a_n*D_value]
+      //   A = companion matrix built from -a1, -a2, ..., -a_n.
+      //   B = [1, 0, ..., 0]^T
       let D_value = numCoeffs[0];
       let C = [];
       for (let i = 0; i < n; i++) {
         C.push(numCoeffs[i + 1] - denCoeffs[i + 1] * D_value);
       }
       
-      // Build the companion matrix A (n x n)
+      // Build companion matrix A (n x n)
       let A = [];
       for (let i = 0; i < n; i++) {
         A[i] = [];
         for (let j = 0; j < n; j++) {
           if (i === 0) {
+            // First row: negative of the denominator coefficients (skipping the leading one)
             A[i][j] = -denCoeffs[j + 1];
           } else {
+            // Subdiagonal ones.
             A[i][j] = (j === i - 1) ? 1 : 0;
           }
         }
@@ -269,54 +185,54 @@
       const N_filter = parseFloat(document.getElementById("N_filter").value);
       const duration = parseFloat(document.getElementById("duration").value);
       const dt = parseFloat(document.getElementById("dt").value);
+      const setpoint = parseFloat(document.getElementById("setpoint").value);
+      // Get non-symmetric saturation limits.
       const u_max = parseFloat(document.getElementById("u_max").value);
       const u_min = parseFloat(document.getElementById("u_min").value);
       
-      // Arrays to store simulation data.
+      // Arrays to store simulation data
       const timeArr = [];
       const outputArr = [];
       const controlArr = [];
-      const setpointArr = [];
       
-      // Initial conditions.
+      // Initial conditions:
       let t = 0;
-      // For n > 0, x is the state vector; for n = 0, the system is static.
+      // State vector x (for n > 0; for n = 0 we have a static gain system: y = D_value*u).
       let x = (n > 0) ? new Array(n).fill(0) : [];
       let u = 0;
       
-      // Compute the initial output.
+      // Compute initial output: if n > 0 then y = C*x + D_value*u, else y = D_value*u.
       let y = (n > 0) ? dotProduct(C, x) + D_value * u : D_value * u;
-      let error = getReference(t) - y;
+      let error = setpoint - y;
       let integral = 0;
       let previousError = error;
-      // d_term holds the state for the filtered derivative.
+      // d_term is the state for the filtered derivative term.
       let d_term = 0;
       
-      // Simulation loop.
+      // Run the simulation loop.
       while (t <= duration) {
-        // Get the current reference at time t.
-        let currentSetpoint = getReference(t);
-        // Record time, system output, and reference.
+        // Record current time and output.
         timeArr.push(t.toFixed(2));
         outputArr.push(y);
-        setpointArr.push(currentSetpoint);
         
         // Compute error.
-        error = currentSetpoint - y;
+        error = setpoint - y;
         
         // Integral term.
         integral += error * dt;
         
-        // Filtered derivative term (Euler integration on: d_dot + N_filter*d = Kd*N_filter*e_dot).
+        // Filtered derivative update:
+        // Euler integration on: d_dot + N_filter*d = Kd*N_filter*e_dot,
+        // where e_dot ≈ (error - previousError)/dt.
         d_term = (1 - N_filter * dt) * d_term + Kd * N_filter * (error - previousError);
         
-        // Controller output.
+        // Compute controller output.
         let u_new = Kp * error + Ki * integral + d_term;
         // Apply non-symmetric saturation.
         u_new = Math.min(u_max, Math.max(u_min, u_new));
         controlArr.push(u_new);
         
-        // Update the system state (Euler integration).
+        // Update the system state (Euler integration of state–space model).
         if (n > 0) {
           let Ax = multiplyMatrixVector(A, x);
           let x_new = [];
@@ -324,8 +240,10 @@
             x_new.push(x[i] + dt * (Ax[i] + B[i] * u_new));
           }
           x = x_new;
+          // Compute output: y = C*x + D_value*u_new.
           y = dotProduct(C, x) + D_value * u_new;
         } else {
+          // For a zero–order system, y = D_value*u.
           y = D_value * u_new;
         }
         
@@ -334,17 +252,17 @@
         t += dt;
       }
       
-      plotData(timeArr, outputArr, setpointArr, controlArr, u_max, u_min);
+      plotData(timeArr, outputArr, setpoint, controlArr, u_max, u_min);
     }
     
-    function plotData(timeArr, outputArr, setpointArr, controlArr, u_max, u_min) {
+    function plotData(timeArr, outputArr, setpoint, controlArr, u_max, u_min) {
       const ctx1 = document.getElementById("outputPlot").getContext("2d");
       const ctx2 = document.getElementById("controlPlot").getContext("2d");
       
       if (chartInstance1) chartInstance1.destroy();
       if (chartInstance2) chartInstance2.destroy();
       
-      // Plot the system response and reference signal.
+      // Plot for the System Response (Output)
       chartInstance1 = new Chart(ctx1, {
         type: 'line',
         data: {
@@ -357,8 +275,8 @@
             pointRadius: 0,
             fill: false,
           }, {
-            label: 'Reference Signal',
-            data: setpointArr,
+            label: 'Setpoint',
+            data: Array(timeArr.length).fill(setpoint),
             borderColor: 'red',
             borderWidth: 1,
             pointRadius: 0,
@@ -367,6 +285,11 @@
           }]
         },
         options: {
+          elements: {
+            line: {
+              borderWidth: 0.5
+            }
+          },
           responsive: true,
           maintainAspectRatio: true,
           scales: {
@@ -376,7 +299,7 @@
         }
       });
       
-      // Plot the control signal and its saturation limits.
+      // Plot for the Control Signal with saturation limits.
       chartInstance2 = new Chart(ctx2, {
         type: 'line',
         data: {
@@ -407,6 +330,11 @@
           }]
         },
         options: {
+          elements: {
+            line: {
+              borderWidth: 0.5
+            }
+          },
           responsive: true,
           maintainAspectRatio: true,
           scales: {
