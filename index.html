@@ -34,6 +34,14 @@
       vertical-align: middle;
       margin-left: 5px;
     }
+    /* Style for the LaTeX preview */
+    #systemLatexPreview {
+      margin: 10px 0;
+      padding: 10px;
+      background-color: #eef;
+      border: 1px solid #99c;
+      font-size: 1.2em;
+    }
   </style>
   <title>Filtered PID Control Simulation with Delay</title>
 </head>
@@ -70,6 +78,11 @@
       <label for="delay">Delay (τ in sec):</label>
       <input type="number" step="0.001" id="delay" value="0">
     </fieldset>
+    
+    <!-- Live LaTeX preview for the system -->
+    <div id="systemLatexPreview">
+      <!-- The LaTeX equation will be inserted here -->
+    </div>
     
     <fieldset>
       <legend><strong>PID Gains</strong></legend>
@@ -139,6 +152,71 @@
       return result;
     }
     
+    // --- New Helper Functions for LaTeX Preview ---
+    // Convert an array of coefficient strings into a LaTeX polynomial
+    function polynomialToLatex(coeffArray) {
+      let poly = "";
+      let degree = coeffArray.length - 1;
+      for (let i = 0; i < coeffArray.length; i++) {
+        let coeff = parseFloat(coeffArray[i].trim());
+        if (isNaN(coeff) || coeff === 0) continue; // skip invalid or zero terms
+        let power = degree - i;
+        let sign = "";
+        if (poly !== "") {
+          sign = coeff > 0 ? " + " : " - ";
+        } else if (coeff < 0) {
+          sign = "-";
+        }
+        let absCoeff = Math.abs(coeff);
+        let coeffStr = (absCoeff === 1 && power !== 0) ? "" : absCoeff;
+        let term = "";
+        if (power > 1) {
+          term = coeffStr + "s^{" + power + "}";
+        } else if (power === 1) {
+          term = coeffStr + "s";
+        } else {
+          term = coeffStr;
+        }
+        poly += sign + term;
+      }
+      return poly === "" ? "0" : poly;
+    }
+    
+    // Update the LaTeX preview for the system transfer function.
+    function updateSystemLatex() {
+      let numVal = document.getElementById("numerator").value;
+      let denVal = document.getElementById("denominator").value;
+      let delayVal = document.getElementById("delay").value;
+      
+      // Split and trim the coefficient strings.
+      let numArray = numVal.split(",");
+      let denArray = denVal.split(",");
+      
+      let numLatex = polynomialToLatex(numArray);
+      let denLatex = polynomialToLatex(denArray);
+      
+      // Use "0" if delay is empty.
+      let tau = delayVal.trim() === "" ? "0" : delayVal.trim();
+      
+      // Build the LaTeX string.
+      let latexStr = "\\[ G(s) = \\frac{" + numLatex + "}{" + denLatex + "} e^{- " + tau + " s} \\]";
+      document.getElementById("systemLatexPreview").innerHTML = latexStr;
+      
+      // Trigger MathJax typesetting.
+      if (typeof MathJax !== "undefined") {
+        MathJax.Hub.Queue(["Typeset", MathJax.Hub, "systemLatexPreview"]);
+      }
+    }
+    
+    // Attach event listeners to update the LaTeX preview as the user types.
+    document.getElementById("numerator").addEventListener("input", updateSystemLatex);
+    document.getElementById("denominator").addEventListener("input", updateSystemLatex);
+    document.getElementById("delay").addEventListener("input", updateSystemLatex);
+    
+    // Initialize the preview on page load.
+    updateSystemLatex();
+    
+    // --- Simulation Code ---
     function simulate() {
       // --- Get system (transfer function) coefficients ---
       let numStr = document.getElementById("numerator").value;
@@ -330,8 +408,8 @@
           responsive: true,
           maintainAspectRatio: true,
           scales: {
-            x: { title: { display: true, text: 'Time \(t\)(s)' } },
-            y: { title: { display: true, text: 'Output \(y(t)\)' } }
+            x: { title: { display: true, text: 'Time \\(t\\)(s)' } },
+            y: { title: { display: true, text: 'Output \\(y(t)\\)' } }
           }
         }
       });
@@ -378,8 +456,8 @@
           responsive: true,
           maintainAspectRatio: true,
           scales: {
-            x: { title: { display: true, text: 'Time \(t\) (s)' } },
-            y: { title: { display: true, text: 'Control Signal \(u(t)\)' } }
+            x: { title: { display: true, text: 'Time \\(t\\) (s)' } },
+            y: { title: { display: true, text: 'Control Signal \\(u(t)\\)' } }
           }
         }
       });
