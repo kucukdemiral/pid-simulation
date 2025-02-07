@@ -16,7 +16,7 @@
       margin-bottom: 1em;
       padding: 10px;
       background-color: #f9f9f9; /* Light background */
-      border: 1px solid #ccc;
+      border: 2px solid #ccc;
     }
     label {
       margin-right: 0.5em;
@@ -49,7 +49,7 @@
   
   <form id="pidForm">
     <fieldset>
-      <legend>System Transfer Function</legend>
+      <legend><strong>System Transfer Function</strong>/legend>
       <label for="numerator">Numerator Coefficients:</label>
       <input type="text" id="numerator" size="10" value="2,3" placeholder="e.g. 2,3">
       <small>(For instance, for \(2s+3\) enter \(2,3\))</small><br/><br/>
@@ -62,7 +62,7 @@
     </fieldset>
     
     <fieldset>
-      <legend>PID Gains</legend>
+      <legend><strong>PID Gains</strong></legend>
       <label for="kp">Proportional (\(K_p\)):</label>
       <input type="number" step="0.1" id="kp" value="1">
       <label for="ki">Integral (\(K_i\)):</label>
@@ -74,7 +74,7 @@
     </fieldset>
     
     <fieldset>
-      <legend>Simulation Settings</legend>
+      <legend><strong>Simulation Settings</strong></legend>
       <label for="duration">Duration (sec):</label>
       <input type="number" step="1" id="duration" value="10">
       <label for="dt">Time Step (sec):</label>
