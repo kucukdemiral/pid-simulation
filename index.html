@@ -125,10 +125,15 @@
   <div class="chart-container">
     <canvas id="controlPlot"></canvas>
   </div>
+  <!-- New canvas for P, I and D components -->
+  <div class="chart-container">
+    <canvas id="controlComponentsPlot"></canvas>
+  </div>
   
   <script>
     let chartInstance1 = null;
     let chartInstance2 = null;
+    let chartInstance3 = null;
     
     // Helper: dot product of two arrays.
     function dotProduct(v1, v2) {
@@ -303,6 +308,10 @@
       const timeArr = [];
       const outputArr = [];
       const controlArr = [];
+      // Arrays to store individual control components
+      const pArr = [];
+      const iArr = [];
+      const dArr = [];
       
       // Initial conditions:
       let t = 0;
@@ -330,8 +339,17 @@
         let alpha = (2 - N_filter * dt) / (2 + N_filter * dt);
         d_term = alpha * d_term + (2 * Kd * N_filter / (2 + N_filter * dt)) * (error - previousError);
         
-        // Compute controller output.
-        let u_new = Kp * error + Ki * integral + d_term;
+        // Compute individual PID components.
+        let p_component = Kp * error;
+        let i_component = Ki * integral;
+        let d_component = d_term;
+        // Save the components for plotting.
+        pArr.push(p_component);
+        iArr.push(i_component);
+        dArr.push(d_component);
+        
+        // Compute controller output (unsaturated).
+        let u_new = p_component + i_component + d_component;
         // Apply saturation if enabled.
         if (saturationEnabled) {
           u_new = Math.min(u_max, Math.max(u_min, u_new));
@@ -367,12 +385,14 @@
         }
         
         previousError = error;
-        u = u_new;  // current controller output (not the delayed one)
+        u = u_new;  // current controller output (unsaturated)
         t += dt;
       }
       
-      // Pass the saturation toggle state to the plotting function.
+      // Plot the system response and control signal.
       plotData(timeArr, outputArr, setpoint, controlArr, u_max, u_min, saturationEnabled);
+      // Plot the individual control components.
+      plotControlComponents(timeArr, pArr, iArr, dArr);
     }
     
     function plotData(timeArr, outputArr, setpoint, controlArr, u_max, u_min, saturationEnabled) {
@@ -408,8 +428,8 @@
           responsive: true,
           maintainAspectRatio: true,
           scales: {
-            x: { title: { display: true, text: 'Time \(t\)(s)' } },
-            y: { title: { display: true, text: 'Output \(y(t)\)' } }
+            x: { title: { display: true, text: 'Time \\(t\\)(s)' } },
+            y: { title: { display: true, text: 'Output \\(y(t)\\)' } }
           }
         }
       });
@@ -456,8 +476,56 @@
           responsive: true,
           maintainAspectRatio: true,
           scales: {
-            x: { title: { display: true, text: 'Time \(t\) (s)' } },
-            y: { title: { display: true, text: 'Control Signal \(u(t)\)' } }
+            x: { title: { display: true, text: 'Time \\(t\\) (s)' } },
+            y: { title: { display: true, text: 'Control Signal \\(u(t)\\)' } }
+          }
+        }
+      });
+    }
+    
+    // Plot the individual PID components on a new canvas.
+    function plotControlComponents(timeArr, pArr, iArr, dArr) {
+      const ctx3 = document.getElementById("controlComponentsPlot").getContext("2d");
+      
+      if (chartInstance3) chartInstance3.destroy();
+      
+      chartInstance3 = new Chart(ctx3, {
+        type: 'line',
+        data: {
+          labels: timeArr,
+          datasets: [
+            {
+              label: 'Proportional',
+              data: pArr,
+              borderColor: 'purple',
+              borderWidth: 1.5,
+              pointRadius: 0,
+              fill: false,
+            },
+            {
+              label: 'Integral',
+              data: iArr,
+              borderColor: 'orange',
+              borderWidth: 1.5,
+              pointRadius: 0,
+              fill: false,
+            },
+            {
+              label: 'Derivative',
+              data: dArr,
+              borderColor: 'magenta',
+              borderWidth: 1.5,
+              pointRadius: 0,
+              fill: false,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          scales: {
+            x: { title: { display: true, text: 'Time (s)' } },
+            y: { title: { display: true, text: 'Control Component Value' } }
           }
         }
       });
