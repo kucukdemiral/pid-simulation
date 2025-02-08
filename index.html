@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -32,6 +33,11 @@
       display: inline-block;
       vertical-align: middle;
       margin-left: 5px;
+    }
+    /* Container for the u_max and u_min inputs */
+    #saturationInputs {
+      display: inline-block; /* Will be toggled on/off */
+      margin-right: 10px;
     }
     /* Style for the LaTeX preview */
     #systemLatexPreview {
@@ -103,11 +109,13 @@
       <input type="number" step="0.001" id="dt" value="0.01">
       <label for="setpoint">Setpoint:</label>
       <input type="number" step="0.1" id="setpoint" value="1"><br/><br/>
-      <!-- Non-symmetric saturation inputs -->
-      <label for="u_max">\(u_\mathrm{max}\):</label>
-      <input type="number" step="1" id="u_max" value="1">
-      <label for="u_min">\(u_\mathrm{min}\):</label>
-      <input type="number" step="1" id="u_min" value="-1">
+      <!-- Saturation inputs wrapped in a container -->
+      <div id="saturationInputs">
+        <label for="u_max">\(u_\mathrm{max}\):</label>
+        <input type="number" step="1" id="u_max" value="1">
+        <label for="u_min">\(u_\mathrm{min}\):</label>
+        <input type="number" step="1" id="u_min" value="-1">
+      </div>
       <!-- Saturation Toggle -->
       <label for="saturationToggle">Saturation:</label>
       <div class="toggle-container">
@@ -156,14 +164,14 @@
       return result;
     }
     
-    // --- New Helper Functions for LaTeX Preview ---
-    // Convert an array of coefficient strings into a LaTeX polynomial
+    // --- Helper Functions for LaTeX Preview ---
+    // Convert an array of coefficient strings into a LaTeX polynomial.
     function polynomialToLatex(coeffArray) {
       let poly = "";
       let degree = coeffArray.length - 1;
       for (let i = 0; i < coeffArray.length; i++) {
         let coeff = parseFloat(coeffArray[i].trim());
-        if (isNaN(coeff) || coeff === 0) continue; // skip invalid or zero terms
+        if (isNaN(coeff) || coeff === 0) continue; // Skip invalid or zero terms.
         let power = degree - i;
         let sign = "";
         if (poly !== "") {
@@ -219,6 +227,22 @@
     
     // Initialize the preview on page load.
     updateSystemLatex();
+    
+    // --- Toggle the Display of Saturation Inputs ---
+    function toggleSaturationInputs() {
+      const toggle = document.getElementById("saturationToggle");
+      const inputsDiv = document.getElementById("saturationInputs");
+      // Show the saturation inputs only if the toggle is checked.
+      if (toggle.checked) {
+        inputsDiv.style.display = "inline-block";
+      } else {
+        inputsDiv.style.display = "none";
+      }
+    }
+    // Attach the event listener to the saturation toggle.
+    document.getElementById("saturationToggle").addEventListener("change", toggleSaturationInputs);
+    // Call it initially to set the proper display.
+    toggleSaturationInputs();
     
     // --- Simulation Code ---
     function simulate() {
@@ -288,12 +312,15 @@
       const duration = parseFloat(document.getElementById("duration").value);
       const dt = parseFloat(document.getElementById("dt").value);
       const setpoint = parseFloat(document.getElementById("setpoint").value);
-      const u_max = parseFloat(document.getElementById("u_max").value);
-      const u_min = parseFloat(document.getElementById("u_min").value);
-      const tau = parseFloat(document.getElementById("delay").value);
+      
+      // Read the current u_max and u_min values.
+      let u_max = parseFloat(document.getElementById("u_max").value);
+      let u_min = parseFloat(document.getElementById("u_min").value);
       
       // Read the saturation toggle state.
       const saturationEnabled = document.getElementById("saturationToggle").checked;
+      
+      const tau = parseFloat(document.getElementById("delay").value);
       
       // Compute the number of delay steps (tau seconds corresponds to tau/dt steps)
       let delaySteps = Math.floor(tau / dt);
@@ -303,11 +330,11 @@
         delayBuffer.push(0);
       }
       
-      // Arrays to store simulation data
+      // Arrays to store simulation data.
       const timeArr = [];
       const outputArr = [];
       const controlArr = [];
-      // Arrays to store individual control components
+      // Arrays to store individual control components.
       const pArr = [];
       const iArr = [];
       const dArr = [];
@@ -531,4 +558,4 @@
     }
   </script>
 </body>
-</html>"
+</html>
