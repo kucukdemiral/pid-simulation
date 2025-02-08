@@ -207,11 +207,16 @@
       let numLatex = polynomialToLatex(numArray);
       let denLatex = polynomialToLatex(denArray);
       
-      // Use "0" if delay is empty.
-      let tau = delayVal.trim() === "" ? "0" : delayVal.trim();
+      // Determine if the delay term should be included.
+      let tauVal = delayVal.trim();
+      let latexStr;
+      if (tauVal === "" || parseFloat(tauVal) === 0) {
+        // If no delay is entered (or delay equals 0), omit the exponential term.
+        latexStr = "\\[ G(s) = \\frac{" + numLatex + "}{" + denLatex + "} \\]";
+      } else {
+        latexStr = "\\[ G(s) = \\frac{" + numLatex + "}{" + denLatex + "} e^{- " + tauVal + " s} \\]";
+      }
       
-      // Build the LaTeX string.
-      let latexStr = "\\[ G(s) = \\frac{" + numLatex + "}{" + denLatex + "} e^{- " + tau + " s} \\]";
       document.getElementById("systemLatexPreview").innerHTML = latexStr;
       
       // Trigger MathJax typesetting.
