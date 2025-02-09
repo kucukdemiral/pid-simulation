@@ -58,16 +58,16 @@
     </a>
   <p>
     The system is modeled as a rational function with delay:
-    <br>
+    <p>
     \( G(s)=\dfrac{Y(s)}{U(s)}=\dfrac{N(s)}{D(s)}e^{-\tau s} \)
-    <br>
+    </p>
     where you enter the numerator and denominator coefficients (in descending powers of \(s\)) and the delay \(\tau\).
   </p>
   <p>
     The filtered PID controller is given by:
-    <br>
+    <p>
     \( U(s)=K_p\,E(s)+\dfrac{K_i}{s}\,E(s)+K_d\,\dfrac{F\,s}{s+F}\,E(s) \)
-    <br>
+    </p>
     where \(F\) is the derivative filter parameter and \(e(t)=\mathrm{Reference}\,-\,y(t)\).
   </p>
   
@@ -455,8 +455,8 @@
           responsive: true,
           maintainAspectRatio: true,
           scales: {
-            x: { title: { display: true, text: 'Time \\(t\\) (s)' } },
-            y: { title: { display: true, text: 'Output \\(y(t)\\)' } }
+            x: { title: { display: true, text: 'Time (t) (s)' } },
+            y: { title: { display: true, text: 'Output (y(t))' } }
           }
         }
       });
@@ -501,8 +501,8 @@
           responsive: true,
           maintainAspectRatio: true,
           scales: {
-            x: { title: { display: true, text: 'Time \\(t\\) (s)' } },
-            y: { title: { display: true, text: 'Control Signal \\(u(t)\\)' } }
+            x: { title: { display: true, text: 'Time (t) (s)' } },
+            y: { title: { display: true, text: 'Control Signal (u(t))' } }
           }
         }
       });
