@@ -6,8 +6,8 @@
   <!-- Chart.js, polyfill, and MathJax -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-<!-- Replace the old MathJax CDN with one from cdnjs -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=TeX-AMS_HTML"></script>
+  <!-- Replace the old MathJax CDN with one from cdnjs -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=TeX-AMS_HTML"></script>
   <style>
     .chart-container {
       width: 100%;
@@ -108,8 +108,13 @@
       <input type="number" step="1" id="duration" value="10">
       <label for="dt">Time Step (sec):</label>
       <input type="number" step="0.001" id="dt" value="0.01">
+      <!-- The "Setpoint" here serves as the reference value in open‐loop mode -->
       <label for="setpoint">Setpoint:</label>
       <input type="number" step="0.1" id="setpoint" value="1"><br/><br/>
+      <!-- New: Toggle for Closed-loop vs Open-loop -->
+      <label for="closedLoopToggle">Closed-loop Control (PID):</label>
+      <input type="checkbox" id="closedLoopToggle" checked>
+      <br/><br/>
       <!-- Saturation inputs wrapped in a container -->
       <div id="saturationInputs">
         <label for="u_max">\(u_\mathrm{max}\):</label>
@@ -317,13 +322,12 @@
       const N_filter = parseFloat(document.getElementById("N_filter").value);
       const duration = parseFloat(document.getElementById("duration").value);
       const dt = parseFloat(document.getElementById("dt").value);
+      // The "setpoint" is used as the reference.
       const setpoint = parseFloat(document.getElementById("setpoint").value);
       
-      // Read the current u_max and u_min values.
+      // Read saturation values.
       let u_max = parseFloat(document.getElementById("u_max").value);
       let u_min = parseFloat(document.getElementById("u_min").value);
-      
-      // Read the saturation toggle state.
       const saturationEnabled = document.getElementById("saturationToggle").checked;
       
       const tau = parseFloat(document.getElementById("delay").value);
@@ -336,6 +340,10 @@
         delayBuffer.push(0);
       }
       
+      // Determine control mode.
+      // If closed-loop is ON, use PID control; if OFF, apply reference directly (open-loop).
+      const closedLoop = document.getElementById("closedLoopToggle").checked;
+      
       // Arrays to store simulation data.
       const timeArr = [];
       const outputArr = [];
@@ -346,7 +354,7 @@
       const dArr = [];
       
       // Initial conditions:
-      let t = 0;
+      let t_curr = 0;
       let x = (n > 0) ? new Array(n).fill(0) : [];
       let u = 0;
       let y = (n > 0) ? dotProduct(C, x) + D_value * u : D_value * u;
@@ -356,46 +364,45 @@
       let d_term = 0;
       
       // --- Simulation Loop (using Trapezoidal Integration) ---
-      while (t <= duration) {
+      while (t_curr <= duration) {
         // Record current time and output.
-        timeArr.push(t.toFixed(2));
+        timeArr.push(t_curr.toFixed(2));
         outputArr.push(y);
         
-        // Compute current error.
-        error = setpoint - y;
+        let u_new = 0;
+        if (closedLoop) {
+          // Closed-loop PID control.
+          error = setpoint - y;
+          integral += (error + previousError) * dt / 2;
+          let alpha = (2 - N_filter * dt) / (2 + N_filter * dt);
+          d_term = alpha * d_term + (2 * Kd * N_filter / (2 + N_filter * dt)) * (error - previousError);
+          let p_component = Kp * error;
+          let i_component = Ki * integral;
+          let d_component = d_term;
+          pArr.push(p_component);
+          iArr.push(i_component);
+          dArr.push(d_component);
+          u_new = p_component + i_component + d_component;
+        } else {
+          // Open-loop: apply reference directly.
+          // No error integration or PID computation.
+          pArr.push(0);
+          iArr.push(0);
+          dArr.push(0);
+          u_new = setpoint;
+        }
         
-        // Trapezoidal integration for the error integral:
-        integral += (error + previousError) * dt / 2;
-        
-        // Tustin’s method for the derivative filter.
-        let alpha = (2 - N_filter * dt) / (2 + N_filter * dt);
-        d_term = alpha * d_term + (2 * Kd * N_filter / (2 + N_filter * dt)) * (error - previousError);
-        
-        // Compute individual PID components.
-        let p_component = Kp * error;
-        let i_component = Ki * integral;
-        let d_component = d_term;
-        // Save the components for plotting.
-        pArr.push(p_component);
-        iArr.push(i_component);
-        dArr.push(d_component);
-        
-        // Compute controller output (unsaturated).
-        let u_new = p_component + i_component + d_component;
         // Apply saturation if enabled.
         if (saturationEnabled) {
           u_new = Math.min(u_max, Math.max(u_min, u_new));
         }
         
         // --- Handle the delay ---
-        // Push the current controller output into the delay buffer.
         delayBuffer.push(u_new);
-        // Retrieve the delayed control input (u_delayed).
         let u_delayed = delayBuffer.shift();
-        // Record the effective control input for plotting.
         controlArr.push(u_delayed);
         
-        // Trapezoidal integration for the state update using the delayed control:
+        // Update state using trapezoidal integration.
         if (n > 0) {
           let Ax = multiplyMatrixVector(A, x);
           // Predictor step: Euler prediction for the next state.
@@ -417,24 +424,26 @@
         }
         
         previousError = error;
-        u = u_new;  // current controller output (unsaturated)
-        t += dt;
+        u = u_new;  // current (unsaturated) controller output
+        t_curr += dt;
       }
       
-      // Plot the system response and control signal.
-      plotData(timeArr, outputArr, setpoint, controlArr, u_max, u_min, saturationEnabled);
-      // Plot the individual control components.
+      // For plotting, label the reference line as "Setpoint" in closed-loop and "Reference" in open-loop.
+      plotData(timeArr, outputArr, setpoint, controlArr, u_max, u_min, saturationEnabled, closedLoop);
       plotControlComponents(timeArr, pArr, iArr, dArr);
     }
     
-    function plotData(timeArr, outputArr, setpoint, controlArr, u_max, u_min, saturationEnabled) {
+    function plotData(timeArr, outputArr, setpoint, controlArr, u_max, u_min, saturationEnabled, closedLoop) {
       const ctx1 = document.getElementById("outputPlot").getContext("2d");
       const ctx2 = document.getElementById("controlPlot").getContext("2d");
       
       if (chartInstance1) chartInstance1.destroy();
       if (chartInstance2) chartInstance2.destroy();
       
-      // Plot for the System Response (Output)
+      // Label the reference line based on control mode.
+      let refLabel = closedLoop ? "Setpoint" : "Reference";
+      
+      // Plot for the System Response (Output) and the reference.
       chartInstance1 = new Chart(ctx1, {
         type: 'line',
         data: {
@@ -447,7 +456,7 @@
             pointRadius: 0,
             fill: false,
           }, {
-            label: 'Setpoint',
+            label: refLabel,
             data: Array(timeArr.length).fill(setpoint),
             borderColor: 'red',
             borderWidth: 1,
@@ -476,7 +485,6 @@
         fill: false,
       }];
       
-      // If saturation is enabled, add saturation limit lines.
       if (saturationEnabled) {
         controlDatasets.push({
           label: 'Saturation Upper Limit',
@@ -515,7 +523,6 @@
       });
     }
     
-    // Plot the individual PID components on a new canvas.
     function plotControlComponents(timeArr, pArr, iArr, dArr) {
       const ctx3 = document.getElementById("controlComponentsPlot").getContext("2d");
       
