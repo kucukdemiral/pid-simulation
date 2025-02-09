@@ -23,11 +23,10 @@
     label {
       margin-right: 0.5em;
     }
-    input[type="text"] {
-      width: 10em;
-    }
-    input[type="number"] {
-      width: 5em;
+    input[type="text"],
+    input[type="number"],
+    select {
+      margin-right: 0.5em;
     }
     /* Optional: Style the saturation toggle (checkbox) container */
     .toggle-container {
@@ -69,7 +68,7 @@
     <br>
     \( U(s)=K_p\,E(s)+\dfrac{K_i}{s}\,E(s)+K_d\,\dfrac{F\,s}{s+F}\,E(s) \)
     <br>
-    where \(F\) is the derivative filter parameter and \(e(t)=\mathrm{Setpoint}\,-\,y(t)\).
+    where \(F\) is the derivative filter parameter and \(e(t)=\mathrm{Reference}\,-\,y(t)\).
   </p>
   
   <form id="pidForm">
@@ -86,9 +85,7 @@
     </fieldset>
     
     <!-- Live LaTeX preview for the system -->
-    <div id="systemLatexPreview">
-      <!-- The LaTeX equation will be inserted here -->
-    </div>
+    <div id="systemLatexPreview"></div>
     
     <fieldset>
       <legend><strong>PID Gains</strong></legend>
@@ -102,20 +99,51 @@
       <input type="number" step="1" id="N_filter" value="10">
     </fieldset>
     
+    <!-- Reference Signal Fieldset (Inline) -->
+    <fieldset>
+      <legend><strong>Reference Signal</strong></legend>
+      <label for="refType">Reference Type:</label>
+      <select id="refType">
+        <option value="step" selected>Step</option>
+        <option value="ramp">Ramp</option>
+        <option value="sine">Sine</option>
+      </select>
+      <!-- For Step: only amplitude -->
+      <div id="refStepDiv">
+        <label for="refStepAmplitude">Amplitude:</label>
+        <input type="number" id="refStepAmplitude" step="0.1" value="1">
+      </div>
+      <!-- For Ramp: initial value and slope -->
+      <div id="refRampDiv" style="display: none;">
+        <label for="refRampInitial">Initial Value:</label>
+        <input type="number" id="refRampInitial" step="0.1" value="0">
+        <label for="refRampSlope">Slope:</label>
+        <input type="number" id="refRampSlope" step="0.1" value="0.1">
+      </div>
+      <!-- For Sine: amplitude and frequency -->
+      <div id="refSineDiv" style="display: none;">
+        <label for="refSineAmplitude">Amplitude:</label>
+        <input type="number" id="refSineAmplitude" step="0.1" value="1">
+        <label for="refSineFrequency">Frequency (Hz):</label>
+        <input type="number" id="refSineFrequency" step="0.1" value="1">
+      </div>
+    </fieldset>
+    
+    <!-- Simulation Settings Fieldset -->
     <fieldset>
       <legend><strong>Simulation Settings</strong></legend>
       <label for="duration">Duration (sec):</label>
       <input type="number" step="1" id="duration" value="10">
       <label for="dt">Time Step (sec):</label>
       <input type="number" step="0.001" id="dt" value="0.01">
-      <!-- The "Setpoint" here serves as the reference value in open‐loop mode -->
+      <!-- In open-loop mode, the reference is applied directly -->
       <label for="setpoint">Setpoint:</label>
       <input type="number" step="0.1" id="setpoint" value="1"><br/><br/>
-      <!-- New: Toggle for Closed-loop vs Open-loop -->
+      <!-- Toggle for closed-loop vs. open-loop -->
       <label for="closedLoopToggle">Closed-loop Control (PID):</label>
       <input type="checkbox" id="closedLoopToggle" checked>
       <br/><br/>
-      <!-- Saturation inputs wrapped in a container -->
+      <!-- Saturation inputs -->
       <div id="saturationInputs">
         <label for="u_max">\(u_\mathrm{max}\):</label>
         <input type="number" step="1" id="u_max" value="1">
@@ -138,8 +166,8 @@
   <div class="chart-container">
     <canvas id="controlPlot"></canvas>
   </div>
-  <!-- New canvas for P, I and D components -->
-  <div class="chart-container">
+  <!-- Control Components Graph -->
+  <div class="chart-container" id="controlComponentsContainer">
     <canvas id="controlComponentsPlot"></canvas>
   </div>
   
@@ -148,7 +176,7 @@
     let chartInstance2 = null;
     let chartInstance3 = null;
     
-    // Helper: dot product of two arrays.
+    // --- Utility Functions ---
     function dotProduct(v1, v2) {
       let sum = 0;
       for (let i = 0; i < v1.length; i++) {
@@ -157,7 +185,6 @@
       return sum;
     }
     
-    // Helper: Multiply matrix A (2D array) by vector x.
     function multiplyMatrixVector(A, x) {
       let result = [];
       for (let i = 0; i < A.length; i++) {
@@ -170,150 +197,102 @@
       return result;
     }
     
-    // --- Helper Functions for LaTeX Preview ---
-    // Convert an array of coefficient strings into a LaTeX polynomial.
+    // --- LaTeX Preview Functions ---
     function polynomialToLatex(coeffArray) {
       let poly = "";
       let degree = coeffArray.length - 1;
       for (let i = 0; i < coeffArray.length; i++) {
         let coeff = parseFloat(coeffArray[i].trim());
-        if (isNaN(coeff) || coeff === 0) continue; // Skip invalid or zero terms.
+        if (isNaN(coeff) || coeff === 0) continue;
         let power = degree - i;
-        let sign = "";
-        if (poly !== "") {
-          sign = coeff > 0 ? " + " : " - ";
-        } else if (coeff < 0) {
-          sign = "-";
-        }
+        let sign = (poly !== "") ? (coeff > 0 ? " + " : " - ") : (coeff < 0 ? "-" : "");
         let absCoeff = Math.abs(coeff);
         let coeffStr = (absCoeff === 1 && power !== 0) ? "" : absCoeff;
-        let term = "";
-        if (power > 1) {
-          term = coeffStr + "s^{" + power + "}";
-        } else if (power === 1) {
-          term = coeffStr + "s";
-        } else {
-          term = coeffStr;
-        }
+        let term = (power > 1) ? coeffStr + "s^{" + power + "}" : (power === 1 ? coeffStr + "s" : coeffStr);
         poly += sign + term;
       }
       return poly === "" ? "0" : poly;
     }
     
-    // Update the LaTeX preview for the system transfer function.
     function updateSystemLatex() {
       let numVal = document.getElementById("numerator").value;
       let denVal = document.getElementById("denominator").value;
       let delayVal = document.getElementById("delay").value;
-      
-      // Split and trim the coefficient strings.
       let numArray = numVal.split(",");
       let denArray = denVal.split(",");
-      
       let numLatex = polynomialToLatex(numArray);
       let denLatex = polynomialToLatex(denArray);
-      
-      // Determine if the delay term should be included.
       let tauVal = delayVal.trim();
-      let latexStr;
-      if (tauVal === "" || parseFloat(tauVal) === 0) {
-        // If no delay is entered (or delay equals 0), omit the exponential term.
-        latexStr = "\\[ G(s) = \\frac{" + numLatex + "}{" + denLatex + "} \\]";
-      } else {
-        latexStr = "\\[ G(s) = \\frac{" + numLatex + "}{" + denLatex + "} e^{- " + tauVal + " s} \\]";
-      }
-      
+      let latexStr = (tauVal === "" || parseFloat(tauVal) === 0) ?
+          "\\[ G(s) = \\frac{" + numLatex + "}{" + denLatex + "} \\]" :
+          "\\[ G(s) = \\frac{" + numLatex + "}{" + denLatex + "} e^{- " + tauVal + " s} \\]";
       document.getElementById("systemLatexPreview").innerHTML = latexStr;
-      
-      // Trigger MathJax typesetting.
       if (typeof MathJax !== "undefined") {
         MathJax.Hub.Queue(["Typeset", MathJax.Hub, "systemLatexPreview"]);
       }
     }
     
-    // Attach event listeners to update the LaTeX preview as the user types.
     document.getElementById("numerator").addEventListener("input", updateSystemLatex);
     document.getElementById("denominator").addEventListener("input", updateSystemLatex);
     document.getElementById("delay").addEventListener("input", updateSystemLatex);
-    
-    // Initialize the preview on page load.
     updateSystemLatex();
     
-    // --- Toggle the Display of Saturation Inputs ---
+    // --- Saturation Toggle ---
     function toggleSaturationInputs() {
       const toggle = document.getElementById("saturationToggle");
       const inputsDiv = document.getElementById("saturationInputs");
-      // Show the saturation inputs only if the toggle is checked.
-      if (toggle.checked) {
-        inputsDiv.style.display = "inline-block";
-      } else {
-        inputsDiv.style.display = "none";
-      }
+      inputsDiv.style.display = toggle.checked ? "inline-block" : "none";
     }
-    // Attach the event listener to the saturation toggle.
     document.getElementById("saturationToggle").addEventListener("change", toggleSaturationInputs);
-    // Call it initially to set the proper display.
     toggleSaturationInputs();
+    
+    // --- Reference Signal Parameter Toggle ---
+    document.getElementById("refType").addEventListener("change", function() {
+      const type = this.value;
+      document.getElementById("refStepDiv").style.display = (type === "step") ? "block" : "none";
+      document.getElementById("refRampDiv").style.display = (type === "ramp") ? "block" : "none";
+      document.getElementById("refSineDiv").style.display = (type === "sine") ? "block" : "none";
+    });
     
     // --- Simulation Code ---
     function simulate() {
-      // --- Get system (transfer function) coefficients ---
+      // --- Get system coefficients ---
       let numStr = document.getElementById("numerator").value;
       let denStr = document.getElementById("denominator").value;
-      
-      // Parse coefficients (expect comma-separated numbers)
       let numCoeffs = numStr.split(",").map(s => parseFloat(s.trim()));
       let denCoeffs = denStr.split(",").map(s => parseFloat(s.trim()));
-      
       if (denCoeffs.length < 1 || isNaN(denCoeffs[0]) || denCoeffs[0] === 0) {
         alert("Invalid denominator. The first coefficient must be nonzero.");
         return;
       }
-      
-      // Normalize so that the highest–order coefficient of the denominator is 1.
       let lead = denCoeffs[0];
       denCoeffs = denCoeffs.map(c => c / lead);
       numCoeffs = numCoeffs.map(c => c / lead);
-      
-      // Let n = degree of denominator, m = degree of numerator.
       let n = denCoeffs.length - 1;
       let m = numCoeffs.length - 1;
       if (m > n) {
         alert("The numerator degree must be less than or equal to the denominator degree.");
         return;
       }
-      
-      // If numerator degree is lower than denominator degree, pad with zeros at the front.
       while (numCoeffs.length < denCoeffs.length) {
         numCoeffs.unshift(0);
       }
       
-      // --- Construct state-space model (Controllable Canonical Form) ---
-      // Direct feed-through term.
+      // --- Construct state-space model ---
       let D_value = numCoeffs[0];
       let C = [];
       for (let i = 0; i < n; i++) {
         C.push(numCoeffs[i + 1] - denCoeffs[i + 1] * D_value);
       }
-      
-      // Build companion matrix A (n x n)
       let A = [];
       for (let i = 0; i < n; i++) {
         A[i] = [];
         for (let j = 0; j < n; j++) {
-          if (i === 0) {
-            A[i][j] = -denCoeffs[j + 1];
-          } else {
-            A[i][j] = (j === i - 1) ? 1 : 0;
-          }
+          A[i][j] = (i === 0) ? -denCoeffs[j + 1] : (j === i - 1 ? 1 : 0);
         }
       }
-      
-      // B vector is [1, 0, ..., 0]
       let B = new Array(n).fill(0);
-      if (n > 0) {
-        B[0] = 1;
-      }
+      if (n > 0) { B[0] = 1; }
       
       // --- Get PID and simulation parameters ---
       const Kp = parseFloat(document.getElementById("kp").value);
@@ -322,57 +301,63 @@
       const N_filter = parseFloat(document.getElementById("N_filter").value);
       const duration = parseFloat(document.getElementById("duration").value);
       const dt = parseFloat(document.getElementById("dt").value);
-      // The "setpoint" is used as the reference.
-      const setpoint = parseFloat(document.getElementById("setpoint").value);
       
-      // Read saturation values.
+      // --- Closed-loop toggle ---
+      const closedLoop = document.getElementById("closedLoopToggle").checked;
+      
+      // --- Saturation settings ---
       let u_max = parseFloat(document.getElementById("u_max").value);
       let u_min = parseFloat(document.getElementById("u_min").value);
       const saturationEnabled = document.getElementById("saturationToggle").checked;
       
+      // --- Delay ---
       const tau = parseFloat(document.getElementById("delay").value);
-      
-      // Compute the number of delay steps (tau seconds corresponds to tau/dt steps)
       let delaySteps = Math.floor(tau / dt);
-      // Initialize the delay buffer with zeros (initial control input is assumed 0)
       let delayBuffer = [];
       for (let i = 0; i < delaySteps; i++) {
         delayBuffer.push(0);
       }
       
-      // Determine control mode.
-      // If closed-loop is ON, use PID control; if OFF, apply reference directly (open-loop).
-      const closedLoop = document.getElementById("closedLoopToggle").checked;
+      // --- Get Reference Signal configuration ---
+      const refType = document.getElementById("refType").value;
+      let refArr = [];
       
-      // Arrays to store simulation data.
-      const timeArr = [];
-      const outputArr = [];
-      const controlArr = [];
-      // Arrays to store individual control components.
-      const pArr = [];
-      const iArr = [];
-      const dArr = [];
+      // --- Simulation arrays ---
+      let timeArr = [];
+      let outputArr = [];
+      let controlArr = [];
+      let pArr = [];
+      let iArr = [];
+      let dArr = [];
       
-      // Initial conditions:
+      // --- Initial conditions ---
       let t_curr = 0;
       let x = (n > 0) ? new Array(n).fill(0) : [];
       let u = 0;
       let y = (n > 0) ? dotProduct(C, x) + D_value * u : D_value * u;
-      let error = setpoint - y;
+      let error = 0;
       let integral = 0;
-      let previousError = error;
+      let previousError = 0;
       let d_term = 0;
       
-      // --- Simulation Loop (using Trapezoidal Integration) ---
       while (t_curr <= duration) {
-        // Record current time and output.
-        timeArr.push(t_curr.toFixed(2));
-        outputArr.push(y);
+        // Compute current reference based on type.
+        let currentRef = 0;
+        if (refType === "step") {
+          currentRef = parseFloat(document.getElementById("refStepAmplitude").value);
+        } else if (refType === "ramp") {
+          let initVal = parseFloat(document.getElementById("refRampInitial").value);
+          let slope = parseFloat(document.getElementById("refRampSlope").value);
+          currentRef = initVal + slope * t_curr;
+        } else if (refType === "sine") {
+          let amp = parseFloat(document.getElementById("refSineAmplitude").value);
+          let freq = parseFloat(document.getElementById("refSineFrequency").value);
+          currentRef = amp * Math.sin(2 * Math.PI * freq * t_curr);
+        }
+        refArr.push(currentRef);
         
-        let u_new = 0;
         if (closedLoop) {
-          // Closed-loop PID control.
-          error = setpoint - y;
+          error = currentRef - y;
           integral += (error + previousError) * dt / 2;
           let alpha = (2 - N_filter * dt) / (2 + N_filter * dt);
           d_term = alpha * d_term + (2 * Kd * N_filter / (2 + N_filter * dt)) * (error - previousError);
@@ -382,37 +367,30 @@
           pArr.push(p_component);
           iArr.push(i_component);
           dArr.push(d_component);
-          u_new = p_component + i_component + d_component;
+          u = p_component + i_component + d_component;
         } else {
-          // Open-loop: apply reference directly.
-          // No error integration or PID computation.
+          error = 0;
+          u = currentRef;
           pArr.push(0);
           iArr.push(0);
           dArr.push(0);
-          u_new = setpoint;
         }
         
-        // Apply saturation if enabled.
         if (saturationEnabled) {
-          u_new = Math.min(u_max, Math.max(u_min, u_new));
+          u = Math.min(u_max, Math.max(u_min, u));
         }
         
-        // --- Handle the delay ---
-        delayBuffer.push(u_new);
+        delayBuffer.push(u);
         let u_delayed = delayBuffer.shift();
         controlArr.push(u_delayed);
         
-        // Update state using trapezoidal integration.
         if (n > 0) {
           let Ax = multiplyMatrixVector(A, x);
-          // Predictor step: Euler prediction for the next state.
           let x_predict = [];
           for (let i = 0; i < n; i++) {
             x_predict[i] = x[i] + dt * (Ax[i] + B[i] * u_delayed);
           }
-          // Compute derivative at the predicted state.
           let Ax_predict = multiplyMatrixVector(A, x_predict);
-          // Corrector: average the derivatives.
           let x_new = [];
           for (let i = 0; i < n; i++) {
             x_new[i] = x[i] + (dt / 2) * ((Ax[i] + B[i] * u_delayed) + (Ax_predict[i] + B[i] * u_delayed));
@@ -424,26 +402,34 @@
         }
         
         previousError = error;
-        u = u_new;  // current (unsaturated) controller output
+        timeArr.push(t_curr.toFixed(2));
+        outputArr.push(y);
         t_curr += dt;
       }
       
-      // For plotting, label the reference line as "Setpoint" in closed-loop and "Reference" in open-loop.
-      plotData(timeArr, outputArr, setpoint, controlArr, u_max, u_min, saturationEnabled, closedLoop);
-      plotControlComponents(timeArr, pArr, iArr, dArr);
+      // Plot the system response and control signal.
+      plotData(timeArr, outputArr, refArr, controlArr, u_max, u_min, saturationEnabled, closedLoop);
+      
+      // Only plot control components if in closed-loop.
+      if (closedLoop) {
+        document.getElementById("controlComponentsContainer").style.display = "block";
+        plotControlComponents(timeArr, pArr, iArr, dArr);
+      } else {
+        // Hide the control components graph.
+        if (chartInstance3) { chartInstance3.destroy(); chartInstance3 = null; }
+        document.getElementById("controlComponentsContainer").style.display = "none";
+      }
     }
     
-    function plotData(timeArr, outputArr, setpoint, controlArr, u_max, u_min, saturationEnabled, closedLoop) {
+    function plotData(timeArr, outputArr, refArr, controlArr, u_max, u_min, saturationEnabled, closedLoop) {
       const ctx1 = document.getElementById("outputPlot").getContext("2d");
       const ctx2 = document.getElementById("controlPlot").getContext("2d");
-      
       if (chartInstance1) chartInstance1.destroy();
       if (chartInstance2) chartInstance2.destroy();
       
-      // Label the reference line based on control mode.
+      // Label the reference line based on mode.
       let refLabel = closedLoop ? "Setpoint" : "Reference";
       
-      // Plot for the System Response (Output) and the reference.
       chartInstance1 = new Chart(ctx1, {
         type: 'line',
         data: {
@@ -457,7 +443,7 @@
             fill: false,
           }, {
             label: refLabel,
-            data: Array(timeArr.length).fill(setpoint),
+            data: refArr,
             borderColor: 'red',
             borderWidth: 1,
             pointRadius: 0,
@@ -469,13 +455,12 @@
           responsive: true,
           maintainAspectRatio: true,
           scales: {
-            x: { title: { display: true, text: 'Time \\(t\\)(s)' } },
+            x: { title: { display: true, text: 'Time \\(t\\) (s)' } },
             y: { title: { display: true, text: 'Output \\(y(t)\\)' } }
           }
         }
       });
       
-      // Prepare datasets for the Control Signal plot.
       const controlDatasets = [{
         label: 'Control Signal (Delayed u)',
         data: controlArr,
@@ -525,9 +510,7 @@
     
     function plotControlComponents(timeArr, pArr, iArr, dArr) {
       const ctx3 = document.getElementById("controlComponentsPlot").getContext("2d");
-      
       if (chartInstance3) chartInstance3.destroy();
-      
       chartInstance3 = new Chart(ctx3, {
         type: 'line',
         data: {
