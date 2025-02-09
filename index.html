@@ -6,18 +6,16 @@
   <!-- Chart.js, polyfill, and MathJax -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=TeX-AMS_HTML"></script>
   <style>
-    /* Set the font family to mimic the GOV.UK style */
+    /* Use rem units for scalability and adjust using media queries */
     body {
       font-family: "GDS Transport", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      font-size: 16px;
+      font-size: 1rem; /* 1 rem = 16px by default in most browsers */
       line-height: 1.5;
       color: #0b0c0c;
       background-color: aliceblue; 
-      margin-left: 2em;
-      margin-right: 2em;
+      margin: 1.25rem; /* roughly 20px */
     }
     .chart-container {
       align-items: center;
@@ -25,76 +23,124 @@
       margin: auto;
     }
     canvas {
-    align-items: center;
-    width: 80% !important; /* Ensure the canvas takes 100% width of its container */
-    height: auto; /* Maintain aspect ratio */
-    margin: auto;
-  }
+      align-items: center;
+      width: 100% !important; /* Make canvas take full width of container */
+      height: auto; /* Maintain aspect ratio */
+      margin: auto;
+    }
     fieldset {
-      margin-bottom: 1em;
-      padding: 10px;
+      margin-bottom: 1rem;
+      padding: 0.625rem;
       background-color: #f9f9f9d2; /* Light background */
       border: 2px solid #ccc;
     }
     button {
-    font-size: 18px; /* Adjust the font size */
-    padding: 10px 20px; /* Adjust the padding for a larger button */
-    background-color: #007BFF; /* Button background color */
-    color: white; /* Button text color */
-    border: none; /* Remove border */
-    border-radius: 7px; /* Rounded corners */
-    cursor: pointer; /* Pointer cursor on hover */
-    transition: background-color 0.3s ease; /* Smooth transition for background color */
-  }
-
-  /* Hover effect for the button */
-  button:hover {
-    background-color: #1500b3; /* Darker shade of blue on hover */
-  }
+      font-size: 1.125rem; /* 18px */
+      padding: 0.625rem 1.25rem; /* Larger clickable area */
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 0.4375rem;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #1500b3;
+    }
     label {
-      margin-right: 0.5em;
-      margin-bottom: 1em;
+      margin-right: 0.5rem;
+      margin-bottom: 1rem;
     }
-    input[type="text"] {
-      width: 10em;
-      font-size: large;
-    }
-    input[type="number"] {
-      width: 6em;
-      font-size: large;
-    }
+    input[type="text"],
+    input[type="number"],
     select {
-      margin-right: 0.5em;
-      margin-bottom: 1em;
-      font-size: medium;
+      font-size: 1rem;
     }
     select option {
-      font-size: medium;
+      font-size: 1rem;
     }
-    /* Optional: Style the saturation toggle (checkbox) container */
     .toggle-container {
       display: inline-block;
       vertical-align: middle;
-      margin-left: 5px;
+      margin-left: 0.3125rem;
     }
-    /* Container for the u_max and u_min inputs */
+    .chart-container canvas {
+  width: 100% !important;
+  height: auto !important;
+  min-height: 300px;
+}
     #saturationInputs {
       display: inline-block;
-      margin-right: 10px;
+      margin-right: 0.625rem;
     }
-    /* Style for the LaTeX preview */
     #systemLatexPreview {
-      margin: 10px 0;
-      padding: 10px;
+      margin: 0.625rem 0;
+      padding: 0.625rem;
       background-color: rgb(202, 229, 238);
       border: 1px solid #99c;
-      font-size: 1.0em;
+      font-size: 1rem;
+    }
+    
+    /* Media query for medium devices */
+    @media (max-width: 768px) {
+      body {
+        font-size: 0.875rem; /* Slightly smaller fonts */
+        margin: 1rem;
+      }
+      button {
+        font-size: 1rem;
+      }
+      input[type="text"],
+      input[type="number"],
+      select {
+        font-size: 0.875rem;
+      }
+      #systemLatexPreview {
+        font-size: 0.875rem;
+      }
+    }
+    
+    /* Media query for small devices */
+    @media (max-width: 480px) {
+      body {
+        font-size: 0.8rem;
+        margin: 0.5rem;
+      }
+      button {
+        font-size: 0.9rem;
+      }
+      input[type="text"],
+      input[type="number"],
+      select {
+        font-size: 0.8rem;
+      }
+      #systemLatexPreview {
+        font-size: 0.8rem;
+      }
     }
   </style>
   <title>Filtered PID Control Simulation with Delay</title>
   <script>
     // Increase the devicePixelRatio for higher resolution (sharpness)
     Chart.defaults.devicePixelRatio = 5;
+    
+    // Function to dynamically update Chart.js default font size based on window width
+    function updateChartFontSize() {
+      let baseFontSize = 16; // default in px
+      if (window.innerWidth < 768) {
+        baseFontSize = 14;
+      }
+      if (window.innerWidth < 480) {
+        baseFontSize = 12;
+      }
+      Chart.defaults.font = {
+        family: '"GDS Transport", "Helvetica Neue", Helvetica, Arial, sans-serif',
+        size: baseFontSize
+      };
+    }
+    
+    window.addEventListener('resize', updateChartFontSize);
+    window.addEventListener('load', updateChartFontSize);
   </script>
 </head>
 <body>
@@ -180,9 +226,7 @@
       <label for="duration">Duration (sec):</label>
       <input type="number" step="1" id="duration" value="10">
       <label for="dt">Time Step (sec):</label>
-      <!-- Restrict dt so that it cannot be less than 0.001 seconds -->
       <input type="number" step="0.001" id="dt" value="0.01" min="0.001">
-      <!-- The setpoint input has been removed -->
       <br/><br/>
       <label for="closedLoopToggle">Closed-loop Control (PID):</label>
       <input type="checkbox" id="closedLoopToggle" checked>
@@ -203,25 +247,17 @@
   </form>
   
   <div class="chart-container">
-    <canvas id="outputPlot" width="800" height="300" style="width:100%; height:300px;"></canvas>
+    <canvas id="outputPlot" style="width:100%; height:auto; min-height:300px;"></canvas>
   </div>
+
   <div class="chart-container">
-    <canvas id="controlPlot" width="800" height="300" style="width:100%; height:300px;"></canvas>
+    <canvas id="controlPlot" style="width:100%; height:auto; min-height:300px;"></canvas>
   </div>
+
+
   <div class="chart-container" id="controlComponentsContainer">
-    <canvas id="controlComponentsPlot" width="800" height="300" style="width:100%; height:300px;"></canvas>
+    <canvas id="controlComponentsPlot" style="width:100%; height:auto; min-height:300px;"></canvas>
   </div>
-  
-  <!-- Script to automatically update date and time -->
-  <script>
-    function updateDateTime() {
-      const now = new Date();
-      const formatted = now.toLocaleString();
-      document.getElementById("updateDateTime").textContent = "Last updated: " + formatted;
-    }
-    updateDateTime();
-    setInterval(updateDateTime, 60000);
-  </script>
   
   <script>
     let chartInstance1 = null;
