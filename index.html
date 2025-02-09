@@ -12,7 +12,7 @@
     /* Set the font family to mimic the GOV.UK style */
     body {
       font-family: "GDS Transport", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      font-size: 18px;
+      font-size: 16px;
       line-height: 1.5;
       color: #0b0c0c;
       background-color: aliceblue; 
@@ -20,12 +20,15 @@
       margin-right: 2em;
     }
     .chart-container {
-      width: 100%;
+      align-items: center;
+      width: 80%;
       margin: auto;
     }
     canvas {
-    width: 100% !important; /* Ensure the canvas takes 100% width of its container */
+    align-items: center;
+    width: 80% !important; /* Ensure the canvas takes 100% width of its container */
     height: auto; /* Maintain aspect ratio */
+    margin: auto;
   }
     fieldset {
       margin-bottom: 1em;
@@ -54,11 +57,11 @@
     }
     input[type="text"] {
       width: 10em;
-      font-size: medium;
+      font-size: large;
     }
     input[type="number"] {
       width: 6em;
-      font-size: medium;
+      font-size: large;
     }
     select {
       margin-right: 0.5em;
@@ -83,7 +86,7 @@
     #systemLatexPreview {
       margin: 10px 0;
       padding: 10px;
-      background-color: rgb(234, 242, 219);
+      background-color: rgb(202, 229, 238);
       border: 1px solid #99c;
       font-size: 1.0em;
     }
