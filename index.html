@@ -9,6 +9,13 @@
   <!-- Replace the old MathJax CDN with one from cdnjs -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=TeX-AMS_HTML"></script>
   <style>
+    /* Set the font family to mimic the GOV.UK style */
+    body {
+      font-family: "GDS Transport", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+      color: #0b0c0c;
+    }
     .chart-container {
       width: 100%;
       height: 300px;
@@ -24,12 +31,8 @@
       margin-right: 0.5em;
       margin-bottom: 1em;
     }
-    input[type="text"] {
-      width: 10em;
-    }
-    input[type="number"] {
-      width: 4em;
-    }
+    input[type="text"],
+    input[type="number"],
     select {
       margin-right: 0.5em;
       margin-bottom: 1em;
@@ -65,14 +68,14 @@
   <p>
     The system is modeled as a rational function with delay:
     <p>
-    \( G(s)=\dfrac{Y(s)}{U(s)}=\dfrac{N(s)}{D(s)}e^{-\tau s} \)
+      \( G(s)=\dfrac{Y(s)}{U(s)}=\dfrac{N(s)}{D(s)}e^{-\tau s} \)
     </p>
     where you enter the numerator and denominator coefficients (in descending powers of \(s\)) and the delay \(\tau\). A unity feedback is assumed in closed-loop form.
   </p>
   <p>
     The filtered PID controller is given by:
     <p>
-    \( U(s)=K_p\,E(s)+\dfrac{K_i}{s}\,E(s)+K_d\,\dfrac{F\,s}{s+F}\,E(s) \)
+      \( U(s)=K_p\,E(s)+\dfrac{K_i}{s}\,E(s)+K_d\,\dfrac{F\,s}{s+F}\,E(s) \)
     </p>
     where \(F\) is the derivative filter parameter and \(e(t)=\mathrm{Reference}\,-\,y(t)\).
   </p>
@@ -176,6 +179,18 @@
   <div class="chart-container" id="controlComponentsContainer">
     <canvas id="controlComponentsPlot"></canvas>
   </div>
+  
+  <!-- Script to automatically update date and time -->
+  <script>
+    function updateDateTime() {
+      const now = new Date();
+      const formatted = now.toLocaleString();
+      document.getElementById("updateDateTime").textContent = "Last updated: " + formatted;
+    }
+    updateDateTime();
+    // Update every minute (60000 ms)
+    setInterval(updateDateTime, 60000);
+  </script>
   
   <script>
     let chartInstance1 = null;
@@ -421,7 +436,6 @@
         document.getElementById("controlComponentsContainer").style.display = "block";
         plotControlComponents(timeArr, pArr, iArr, dArr);
       } else {
-        // Hide the control components graph.
         if (chartInstance3) { chartInstance3.destroy(); chartInstance3 = null; }
         document.getElementById("controlComponentsContainer").style.display = "none";
       }
