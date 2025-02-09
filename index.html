@@ -6,15 +6,18 @@
   <!-- Chart.js, polyfill, and MathJax -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-  <!-- Replace the old MathJax CDN with one from cdnjs -->
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=TeX-AMS_HTML"></script>
   <style>
     /* Set the font family to mimic the GOV.UK style */
     body {
       font-family: "GDS Transport", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      font-size: 16px;
+      font-size: 18px;
       line-height: 1.5;
       color: #0b0c0c;
+      background-color: aliceblue; 
+      margin-left: 2em;
+      margin-right: 2em;
     }
     .chart-container {
       width: 100%;
@@ -33,13 +36,16 @@
     }
     input[type="text"] {
       width: 10em;
+      font-size: medium;
     }
     input[type="number"] {
       width: 6em;
+      font-size: medium;
     }
     select {
       margin-right: 0.5em;
       margin-bottom: 1em;
+      font-size: medium;
     }
     /* Optional: Style the saturation toggle (checkbox) container */
     .toggle-container {
@@ -58,13 +64,13 @@
       padding: 10px;
       background-color: rgb(234, 242, 219);
       border: 1px solid #99c;
-      font-size: 1.2em;
+      font-size: 1.0em;
     }
   </style>
   <title>Filtered PID Control Simulation with Delay</title>
   <script>
     // Increase the devicePixelRatio for higher resolution (sharpness)
-    Chart.defaults.global.devicePixelRatio = 2;
+    Chart.defaults.devicePixelRatio = 5;
   </script>
 </head>
 <body>
