@@ -24,11 +24,11 @@
       margin: auto;
     }
     canvas {
-    align-items: center;
-    width: 80% !important; /* Ensure the canvas takes 100% width of its container */
-    height: auto; /* Maintain aspect ratio */
-    margin: auto;
-  }
+      align-items: center;
+      width: 100% !important; /* Make the canvas fill its container */
+      height: auto; /* Maintain aspect ratio */
+      margin: auto;
+    }
     fieldset {
       margin-bottom: 1em;
       padding: 10px;
@@ -36,20 +36,19 @@
       border: 2px solid #ccc;
     }
     button {
-    font-size: 18px; /* Adjust the font size */
-    padding: 10px 20px; /* Adjust the padding for a larger button */
-    background-color: #007BFF; /* Button background color */
-    color: white; /* Button text color */
-    border: none; /* Remove border */
-    border-radius: 7px; /* Rounded corners */
-    cursor: pointer; /* Pointer cursor on hover */
-    transition: background-color 0.3s ease; /* Smooth transition for background color */
-  }
-
-  /* Hover effect for the button */
-  button:hover {
-    background-color: #1500b3; /* Darker shade of blue on hover */
-  }
+      font-size: 18px; /* Adjust the font size */
+      padding: 10px 20px; /* Adjust the padding for a larger button */
+      background-color: #007BFF; /* Button background color */
+      color: white; /* Button text color */
+      border: none; /* Remove border */
+      border-radius: 7px; /* Rounded corners */
+      cursor: pointer; /* Pointer cursor on hover */
+      transition: background-color 0.3s ease; /* Smooth transition for background color */
+    }
+    /* Hover effect for the button */
+    button:hover {
+      background-color: #1500b3; /* Darker shade of blue on hover */
+    }
     label {
       margin-right: 0.5em;
       margin-bottom: 1em;
@@ -88,6 +87,16 @@
       background-color: rgb(202, 229, 238);
       border: 1px solid #99c;
       font-size: 1.0em;
+    }
+    /* 
+      CSS Transform Scaling for small devices: 
+      When the viewport width is 480px or less, scale the entire chart container.
+    */
+    @media (max-width: 480px) {
+      .chart-container {
+        transform: scale(0.8);
+        transform-origin: top left;
+      }
     }
   </style>
   <title>Filtered PID Control Simulation with Delay</title>
@@ -181,7 +190,6 @@
       <label for="dt">Time Step (sec):</label>
       <!-- Restrict dt so that it cannot be less than 0.001 seconds -->
       <input type="number" step="0.001" id="dt" value="0.01" min="0.001">
-      <!-- The setpoint input has been removed -->
       <br/><br/>
       <label for="closedLoopToggle">Closed-loop Control (PID):</label>
       <input type="checkbox" id="closedLoopToggle" checked>
@@ -201,6 +209,7 @@
     <button type="button" onclick="simulate()">Run Simulation</button>
   </form>
   
+  <!-- All canvases are wrapped in chart-container for consistent scaling -->
   <div class="chart-container">
     <canvas id="outputPlot" width="800" height="300" style="width:100%; height:300px;"></canvas>
   </div>
