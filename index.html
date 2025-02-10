@@ -206,6 +206,11 @@
       </div>
     </fieldset>
     
+    <!-- New diagram display based on closed-loop and saturation state -->
+    <div id="controlDiagram" style="text-align: center; margin-bottom: 1em;">
+      <img id="controlDiagramImg" src="FB_saturation.png" alt="Feedback Controller with Saturation" style="max-width: 100%; height: auto;">
+    </div>
+    
     <button type="button" onclick="simulate()">Run Simulation</button>
   </form>
   
@@ -301,6 +306,35 @@
     }
     document.getElementById("saturationToggle").addEventListener("change", toggleSaturationInputs);
     toggleSaturationInputs();
+    
+    // --- Update Control Diagram based on Closed-loop and Saturation State ---
+    function updateControlDiagram() {
+      const closedLoop = document.getElementById("closedLoopToggle").checked;
+      const saturationEnabled = document.getElementById("saturationToggle").checked;
+      const diagramImg = document.getElementById("controlDiagramImg");
+      if (closedLoop) {
+        if (saturationEnabled) {
+          diagramImg.src = "FB_saturation.png";
+          diagramImg.alt = "Feedback Controller with Saturation";
+        } else {
+          diagramImg.src = "FB.png";
+          diagramImg.alt = "Feedback Controller without Saturation";
+        }
+      } else {
+        if (saturationEnabled) {
+          diagramImg.src = "OL_saturated.png";
+          diagramImg.alt = "Open Loop System with Saturation";
+        } else {
+          diagramImg.src = "OL.png";
+          diagramImg.alt = "Open Loop System without Saturation";
+        }
+      }
+    }
+    // Update the diagram when the toggle states change
+    document.getElementById("closedLoopToggle").addEventListener("change", updateControlDiagram);
+    document.getElementById("saturationToggle").addEventListener("change", updateControlDiagram);
+    // Call once on page load
+    updateControlDiagram();
     
     // --- Reference Signal Parameter Toggle ---
     document.getElementById("refType").addEventListener("change", function() {
@@ -520,7 +554,7 @@
       });
       
       const controlDatasets = [{
-        label: 'Control Signal (Delayed u)',
+        label: 'Control',
         data: controlArr,
         borderColor: 'green',
         borderWidth: 1.5,
@@ -530,7 +564,7 @@
       
       if (saturationEnabled) {
         controlDatasets.push({
-          label: 'Saturation Upper Limit',
+          label: 'Sat Limit',
           data: Array(timeArr.length).fill(u_max),
           borderColor: 'black',
           borderWidth: 1,
@@ -539,7 +573,7 @@
           fill: false,
         });
         controlDatasets.push({
-          label: 'Saturation Lower Limit',
+          label: 'Sat Limit',
           data: Array(timeArr.length).fill(u_min),
           borderColor: 'black',
           borderWidth: 1,
@@ -615,7 +649,7 @@
               ticks: { maxTicksLimit: 10 }
             },
             y: { 
-              title: { display: true, text: 'Control Component Value' },
+              title: { display: true, text: 'Control Component' },
               ticks: { maxTicksLimit: 10 }
             }
           }
