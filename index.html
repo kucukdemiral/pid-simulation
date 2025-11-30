@@ -459,8 +459,9 @@ body.embedded .content {
                     <option value="PID_PM45">PID, φ<sub>PM</sub> = 45°</option>
                     <option value="PID_PM60">PID, φ<sub>PM</sub> = 60°</option>
                 </select>
-                <button onclick="applyAutotunePID()"
-                        style="margin-left:8px;padding:4px 8px;font-size:0.8rem;cursor:pointer;">
+                <button id="btn-autotune" disabled
+                        onclick="applyAutotunePID()"
+                        style="margin-left:8px;padding:4px 8px;font-size:0.8rem;cursor:not-allowed;opacity:0.4;">
                     Apply (auto-tune)
                 </button>
                 <div style="margin-top:5px;opacity:0.7;">
@@ -507,6 +508,16 @@ function toggleSidebar() {
     btn.innerHTML = content.classList.contains('show')
         ? 'Hide Parameters &#9650;'
         : 'Show Parameters &#9660;';
+}
+
+// Enable/disable auto-tune button based on control mode
+function updateAutotuneButton() {
+    const btn = document.getElementById('btn-autotune');
+    if (!btn) return;
+    const enabled = (controlMode === 'RELAY');
+    btn.disabled = !enabled;
+    btn.style.opacity = enabled ? '1' : '0.4';
+    btn.style.cursor  = enabled ? 'pointer' : 'not-allowed';
 }
 
 // --- System parsing ---
@@ -572,6 +583,9 @@ function setMode(mode) {
     });
     document.getElementById('controls-pid').classList.toggle('hidden', mode !== 'PID');
     document.getElementById('controls-relay').classList.toggle('hidden', mode !== 'RELAY');
+
+    updateAutotuneButton();   // keep auto-tune only active in RELAY
+
     renderMath();
     runSimulation();
 }
@@ -982,7 +996,9 @@ function updateAutoTune() {
 }
 
 function applyAutotunePID() {
-    if (!window.autoTune) return;
+    // Safety: only allow in RELAY mode and when auto-tune data is available
+    if (controlMode !== 'RELAY' || !window.autoTune) return;
+
     const {Pu, Ku} = window.autoTune;
     const rule = document.getElementById("tune-rule").value;
     
@@ -1020,7 +1036,10 @@ function applyAutotunePID() {
 }
 
 // --- Init ---
-window.onload = function () { updateSystem(); };
+window.onload = function () {
+    updateSystem();
+    updateAutotuneButton();  // initialise button state for default PID mode
+};
 </script>
 </body>
 </html>
