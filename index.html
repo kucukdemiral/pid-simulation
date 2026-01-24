@@ -1648,17 +1648,13 @@ function updateAutoTune() {
     if (Aosc <= 0) return;
     
     const M = params.relayAmp;
-    const h = Math.abs(params.hyst || 0);
-
-    let Ku;
-    const useHyst = (h > 0 && h < Aosc);
-    if (useHyst) {
-        const ratio = h / Aosc;
-        const corr  = Math.sqrt(1 - ratio * ratio);
-        Ku = (Math.PI * Aosc) / (4 * M * corr);
-    } else {
-        Ku = 4 * M / (Math.PI * Aosc);
-    }
+    
+    // --- CORRECTION APPLIED HERE ---
+    // The Ultimate Controller Gain is always defined as (4 * M) / (PI * A) for tuning purposes.
+    // This represents the equivalent gain of the relay element itself.
+    // The previous incorrect formula inverted this relationship when hysteresis was active.
+    
+    const Ku = (4 * M) / (Math.PI * Aosc);
     
     document.getElementById("tun-Pu").textContent = Pu.toFixed(3);
     document.getElementById("tun-A").textContent = Aosc.toFixed(3);
@@ -1668,11 +1664,7 @@ function updateAutoTune() {
 
     const formulaDiv = document.getElementById('tun-formula');
     if (formulaDiv) {
-        if (useHyst) {
-            formulaDiv.innerHTML = '\\(K_u = \\dfrac{\\pi A}{4 M \\sqrt{1 - (h/A)^2}}\\)';
-        } else {
-            formulaDiv.innerHTML = '\\(K_u = \\dfrac{4 M}{\\pi A}\\)';
-        }
+        formulaDiv.innerHTML = '\\(K_u = \\dfrac{4 M}{\\pi A}\\)';
         if (window.MathJax && MathJax.typesetPromise) {
             MathJax.typesetPromise([formulaDiv]).catch(e => console.log('Math error', e));
         }
