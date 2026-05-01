@@ -124,6 +124,11 @@
       \( U(s)=K_p\,E(s)+\dfrac{K_i}{s}\,E(s)+K_d\,\dfrac{F\,s}{s+F}\,E(s) \)
     </p>
     where \(F\) is the derivative filter parameter and \(e(t)=\mathrm{Reference}\,-\,y(t)\).
+    When anti-windup is enabled, the integrator is corrected via back-calculation:
+    <p>
+      \( \dot{I}(t) = K_i\,e(t) + K_b\,(u_\mathrm{sat} - u) \)
+    </p>
+    where \(K_b\) is the back-calculation gain and \(u_\mathrm{sat}\) is the saturated control signal.
   </p>
   
   <form id="pidForm">
@@ -203,6 +208,15 @@
       <label for="saturationToggle">Saturation:</label>
       <div class="toggle-container">
         <input type="checkbox" id="saturationToggle" checked>
+      </div>
+      <br/><br/>
+      <div id="antiWindupInputs">
+        <label for="Kb">Back-calculation gain (\(K_b\)):</label>
+        <input type="number" step="0.1" id="Kb" value="1">
+      </div>
+      <label for="antiWindupToggle">Anti-Windup:</label>
+      <div class="toggle-container">
+        <input type="checkbox" id="antiWindupToggle">
       </div>
     </fieldset>
     
@@ -306,6 +320,17 @@
     }
     document.getElementById("saturationToggle").addEventListener("change", toggleSaturationInputs);
     toggleSaturationInputs();
+
+    function toggleAntiWindupInputs() {
+      const satOn = document.getElementById("saturationToggle").checked;
+      const awOn = document.getElementById("antiWindupToggle").checked;
+      document.getElementById("antiWindupToggle").parentElement.style.display = satOn ? "inline-block" : "none";
+      document.querySelector('label[for="antiWindupToggle"]').style.display = satOn ? "" : "none";
+      document.getElementById("antiWindupInputs").style.display = (satOn && awOn) ? "inline-block" : "none";
+    }
+    document.getElementById("antiWindupToggle").addEventListener("change", toggleAntiWindupInputs);
+    document.getElementById("saturationToggle").addEventListener("change", toggleAntiWindupInputs);
+    toggleAntiWindupInputs();
     
     // --- Update Control Diagram based on Closed-loop and Saturation State ---
     function updateControlDiagram() {
@@ -399,6 +424,8 @@
       let u_max = parseFloat(document.getElementById("u_max").value);
       let u_min = parseFloat(document.getElementById("u_min").value);
       const saturationEnabled = document.getElementById("saturationToggle").checked;
+      const antiWindupEnabled = document.getElementById("antiWindupToggle").checked;
+      const Kb = parseFloat(document.getElementById("Kb").value);
       
       // --- Delay ---
       const tau = parseFloat(document.getElementById("delay").value);
@@ -467,7 +494,11 @@
         }
         
         if (saturationEnabled) {
+          let u_unsat = u;
           u = Math.min(u_max, Math.max(u_min, u));
+          if (antiWindupEnabled && closedLoop) {
+            integral += Kb * (u - u_unsat) * dt;
+          }
         }
         
         delayBuffer.push(u);
